@@ -124,6 +124,17 @@ def scatterplot(xy, title, xlabel, ylabel):
     plt.ylabel(ylabel)
     return 0
 
+def virus_bacteria_count(df):
+    bacteria = 0
+    virus = 0
+    for element in df['bacteria/virus/normal']:
+        if element=='bacteria':
+            bacteria += 1
+        else:
+            virus += 1
+    return bacteria, virus
+    
+
 ##############################################################################
 #
 ##############################################################################
@@ -165,13 +176,79 @@ obs_n = df_train_n.shape[0]
 obs_p = df_train_p.shape[0]
 
 categories = ("NORMAL", "PNEUMONIA")
-title = "NORMAL AND PNEUMONIA COUT (TRAIN SET)"
+title = "NORMAL AND PNEUMONIA COUNT (TRAIN SET)"
 xlabel = "Normal or Pneumonia"
 ylabel = "Number of observations"
 plot_histogram(categories, (obs_n, obs_p), title, xlabel, ylabel, 0.8)
 
 ##############################################################################
-#Scatterplot of img_width
+#Histogram of NORMAL and PNEUMONIA for TEST set
+##############################################################################
+
+obs_n = df_test_n.shape[0]
+obs_p = df_test_p.shape[0]
+
+categories = ("NORMAL", "PNEUMONIA")
+title = "NORMAL AND PNEUMONIA COUNT (TEST SET)"
+xlabel = "Normal or Pneumonia"
+ylabel = "Number of observations"
+plot_histogram(categories, (obs_n, obs_p), title, xlabel, ylabel, 0.8)
+
+##############################################################################
+#Histogram of NORMAL and PNEUMONIA for VALIDATION set
+##############################################################################
+
+obs_n = df_val_n.shape[0]
+obs_p = df_val_p.shape[0]
+
+categories = ("NORMAL", "PNEUMONIA")
+title = "NORMAL AND PNEUMONIA COUNT (VALIDATION SET)"
+xlabel = "Normal or Pneumonia"
+ylabel = "Number of observations"
+plot_histogram(categories, (obs_n, obs_p), title, xlabel, ylabel, 0.8)
+
+##############################################################################
+#Histogram of NORMAL and VIRUS and BACTERIA for TRAIN set
+##############################################################################
+
+obs_n = df_train_n.shape[0]
+obs_b, obs_v = virus_bacteria_count(df_train_p)
+
+categories = ("NORMAL", "BACTERIA", "VIRUS")
+title = "NORMAL, BACTERIA AND VIRUS COUNT (TRAIN SET)"
+xlabel = "Normal, Bacteria or Virus"
+ylabel = "Number of observations"
+plot_histogram(categories, (obs_n, obs_b, obs_v), title, xlabel, ylabel, 0.8)
+
+##############################################################################
+#Histogram of NORMAL and VIRUS and BACTERIA for TEST set
+##############################################################################
+
+obs_n = df_test_n.shape[0]
+obs_b, obs_v = virus_bacteria_count(df_test_p)
+
+categories = ("NORMAL", "BACTERIA", "VIRUS")
+title = "NORMAL, BACTERIA AND VIRUS COUNT (TEST SET)"
+xlabel = "Normal, Bacteria or Virus"
+ylabel = "Number of observations"
+plot_histogram(categories, (obs_n, obs_b, obs_v), title, xlabel, ylabel, 0.8)
+
+##############################################################################
+#Histogram of NORMAL and VIRUS and BACTERIA for VALIDATION set
+##############################################################################
+
+obs_n = df_val_n.shape[0]
+obs_b, obs_v = virus_bacteria_count(df_val_p)
+
+categories = ("NORMAL", "BACTERIA", "VIRUS")
+title = "NORMAL, BACTERIA AND VIRUS COUNT (VALIDATION SET)"
+xlabel = "Normal, Bacteria or Virus"
+ylabel = "Number of observations"
+plot_histogram(categories, (obs_n, obs_b, obs_v), title, xlabel, ylabel, 0.8)
+
+
+##############################################################################
+#Scatterplot of img_width (all images)
 ##############################################################################
 
 xy_width = xy_calculator(df['width'])
@@ -180,7 +257,7 @@ xlabel = "Width"
 scatterplot(xy_width, title, xlabel, ylabel)
 
 ##############################################################################
-#Scatterplot of img_height
+#Scatterplot of img_height (all images)
 ##############################################################################
 
 xy_height = xy_calculator(df['height'])

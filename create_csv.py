@@ -13,6 +13,7 @@ import cv2
 ##############################################################################
 #PARAMETERS
 ##############################################################################
+pd.set_option('display.expand_frame_repr', False)
 
 img_dir = '../MA1_PROJH419_pneumonia_data/'
 test_img_dir = '../MA1_PROJH419_pneumonia_data/test/'
@@ -52,7 +53,7 @@ def add_norm_or_pneu(df, NORM_PNEU):
     for i in range(df.shape[0]):
         norm_pneu.append(NORM_PNEU)
         
-    df['norm_pneu'] = norm_pneu
+    df['normal/pneumonia'] = norm_pneu
     return df
     
 def add_img_dimensions(df, directory):
@@ -78,6 +79,7 @@ def create_csv(directory, csv_dir, set_name, disease):
     df = create_df(directory)
     df = add_set_name(df, set_name)
     df = add_norm_or_pneu(df, disease)
+    df = add_bacteria_or_virus(df)
     df = add_img_dimensions(df, directory)
     
     print(df.head())
@@ -99,6 +101,20 @@ def open_dataframes():
 def combine_dataframes(df1, df2, df3, df4, df5, df6):
     df = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     export_csv = df.to_csv(csv_dir + 'combined.csv')
+    return df
+
+def add_bacteria_or_virus(df):
+    res = []
+    
+    for name in df['name']:
+        if 'bacteria' in name:
+            res.append('bacteria')
+        elif 'virus' in name:
+            res.append('virus')
+        else:
+            res.append('normal')
+    
+    df['bacteria/virus/normal'] = res
     return df
 
 ##############################################################################
