@@ -15,10 +15,10 @@ import cv2
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../MA1_PROJH419_pneumonia_data/'
-test_img_dir = '../MA1_PROJH419_pneumonia_data/test/'
-train_img_dir = '../MA1_PROJH419_pneumonia_data/train/'
-val_img_dir = '../MA1_PROJH419_pneumonia_data/val/'
+img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_dir/'
+test_img_dir = img_dir + 'test/'
+train_img_dir = img_dir + 'train/'
+val_img_dir = img_dir + 'val/'
 
 csv_dir = 'csv/'
 
