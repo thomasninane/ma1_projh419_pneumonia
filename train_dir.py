@@ -2,18 +2,20 @@
 #IMPORTS
 ##############################################################################
 
+import os
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import matplotlib
+
 from keras.preprocessing.image import ImageDataGenerator, load_img
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras import backend as K
 
-import os
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-#matplotlib inline
+from sklearn.utils import class_weight
 
 ##############################################################################
 #PARAMETERS
@@ -26,6 +28,8 @@ train_img_dir = img_dir + 'train/'
 val_img_dir = img_dir + 'val/'
 
 csv_dir = 'csv/'
+plot_dir = 'plots/'
+model_dir = '../MA1_PROJH419_pneumonia_data/models/'
 
 nb_test_samples = 624
 nb_train_samples = 5216
@@ -36,6 +40,9 @@ BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
+
+plot_name = 'flow_from_dir_classWeights_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
+model_name = plot_name
 
 ##############################################################################
 #FUNCTIONS
@@ -110,12 +117,12 @@ inputShape = inputShape(WIDTH, HEIGHT)
 model = createModel(inputShape)
 
 # '''No class balancing'''
-# model.fit_generator(train_generator,
-#                     steps_per_epoch = nb_train_samples // BATCH_SIZE,
-#                     epochs = EPOCHS,
-#                     validation_data = val_generator,
-#                     validation_steps = nb_val_samples // BATCH_SIZE
-#                     )
+# H = model.fit_generator(train_generator,
+#                         steps_per_epoch = nb_train_samples // BATCH_SIZE,
+#                         epochs = EPOCHS,
+#                         validation_data = val_generator,
+#                         validation_steps = nb_val_samples // BATCH_SIZE
+#                         )
 
 
 '''Class balancing using class weights'''
@@ -124,10 +131,40 @@ CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
                                                   train_generator.classes)
 print("Class weights:", CLASS_WEIGHTS)
 
-model.fit_generator(train_generator,
-                    steps_per_epoch = nb_train_samples // BATCH_SIZE,
-                    epochs = EPOCHS,
-                    validation_data = val_generator,
-                    validation_steps = nb_val_samples // BATCH_SIZE,
-                    class_weight = CLASS_WEIGHTS
-                    )
+H = model.fit_generator(train_generator,
+                        steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                        epochs = EPOCHS,
+                        validation_data = val_generator,
+                        validation_steps = nb_val_samples // BATCH_SIZE,
+                        class_weight = CLASS_WEIGHTS
+                        )
+
+
+model.save(model_dir + model_name)
+
+###############################################################################
+#GENERATING PLOTS
+###############################################################################
+
+print("Generating plots")
+
+matplotlib.use("Agg")
+plt.style.use("ggplot")
+plt.figure()
+
+N = EPOCHS
+
+plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+#plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
+plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+#plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
+plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+
+plt.title("Training Loss and Accuracy on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Loss/Accuracy")
+plt.legend(loc="lower left")
+plt.savefig(plot_dir + plot_name + ".png")
+
+print("Finished")

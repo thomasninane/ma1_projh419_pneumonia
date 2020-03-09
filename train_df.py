@@ -2,30 +2,34 @@
 #IMPORTS
 ##############################################################################
 
+import os
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import matplotlib
+
 from keras.preprocessing.image import ImageDataGenerator, load_img
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras import backend as K
 
-import os
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-#matplotlib inline
+from sklearn.utils import class_weight
 
 ##############################################################################
 #PARAMETERS
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_dir/'
+img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_df/'
 test_img_dir = img_dir + 'test/'
 train_img_dir = img_dir + 'train/'
 val_img_dir = img_dir + 'val/'
 
 csv_dir = 'csv/'
+plot_dir = 'plots/'
+model_dir = '../MA1_PROJH419_pneumonia_data/models/'
 
 nb_test_samples = 624
 nb_train_samples = 5216
@@ -36,6 +40,9 @@ BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
+
+plot_name = 'flow_from_df_oversample_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
+model_name = plot_name
 
 ##############################################################################
 #FUNCTIONS
@@ -109,16 +116,24 @@ def oversample_or_undersample(string, df0, df1):
     print("Len of train_normal (unbalanced): " , df0.shape[0])
     print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
     
-    if string=="under":
-        df0, df1 = undersample(df0, df1)
+    if (string=='no'):
+        df = regroup_and_shuffle(df0, df1)
+        return df
+    
     else:
-        df0, df1 = oversample(df0, df1)
-    
-    print("Len of train_normal (balanced): ", df0.shape[0])
-    print("Len of train_pneumonia (balanced): ", df1.shape[0])
-    
-    df = regroup_and_shuffle(df0, df1)
-    return df
+        if string == 'undersample':
+            df0, df1 = undersample(df0, df1)
+        elif string == 'oversample':
+            df0, df1 = oversample(df0, df1)
+        else:
+            print('oversample or undersample error')
+            return 0
+        
+        print("Len of train_normal (balanced): ", df0.shape[0])
+        print("Len of train_pneumonia (balanced): ", df1.shape[0])
+        
+        df = regroup_and_shuffle(df0, df1)
+        return df
     
 
 ##############################################################################
@@ -133,8 +148,8 @@ df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv')
 df_train_p = df_train_p[['name', 'set_name', 'normal/pneumonia']]
 print(df_train_p.head())
 
-
-df_train_balanced = oversample_or_undersample('over', df_train_n, df_train_p)
+'''Oversampling/Undersampling (no, undersample, oversample)'''
+df_train_balanced = oversample_or_undersample('oversample', df_train_n, df_train_p)
 
 
 ##############################################################################
@@ -150,13 +165,13 @@ train_datagen = ImageDataGenerator(rescale = 1./255,
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
 train_generator = train_datagen.flow_from_dataframe(dataframe = df_train_balanced,
-                                                 directory = '../MA1_PROJH419_pneumonia_data/flow_from_df/train/',
-                                                 x_col = 'name',
-                                                 y_col = 'normal/pneumonia',
-                                                 target_size = (WIDTH, HEIGHT),
-                                                 batch_size = BATCH_SIZE,
-                                                 class_mode = 'binary'
-                                                 )
+                                                    directory = img_dir + 'train/',
+                                                    x_col = 'name',
+                                                    y_col = 'normal/pneumonia',
+                                                    target_size = (WIDTH, HEIGHT),
+                                                    batch_size = BATCH_SIZE,
+                                                    class_mode = 'binary'
+                                                    )
 
 val_generator = test_datagen.flow_from_directory(val_img_dir,
                                                  target_size = (WIDTH, HEIGHT),
@@ -173,10 +188,38 @@ test_generator = test_datagen.flow_from_directory(test_img_dir,
 inputShape = inputShape(WIDTH, HEIGHT)
 model = createModel(inputShape)
 
-'''Oversampling/Undersampling'''
-model.fit_generator(train_generator,
-                    steps_per_epoch = nb_train_samples // BATCH_SIZE,
-                    epochs = EPOCHS,
-                    validation_data = val_generator,
-                    validation_steps = nb_val_samples // BATCH_SIZE
-                    )
+H = model.fit_generator(train_generator,
+                        steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                        epochs = EPOCHS,
+                        validation_data = val_generator,
+                        validation_steps = nb_val_samples // BATCH_SIZE
+                        )
+
+model.save(model_dir + model_name)
+
+###############################################################################
+#GENERATING PLOTS
+###############################################################################
+
+print("Generating plots")
+
+matplotlib.use("Agg")
+plt.style.use("ggplot")
+plt.figure()
+
+N = EPOCHS
+
+plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+#plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
+plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+#plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
+plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+
+plt.title("Training Loss and Accuracy on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Loss/Accuracy")
+plt.legend(loc="lower left")
+plt.savefig(plot_dir + plot_name + ".png")
+
+print("Finished")
