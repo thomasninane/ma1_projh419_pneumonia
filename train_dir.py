@@ -37,11 +37,12 @@ nb_val_samples = 16
 
 EPOCHS = 20
 BATCH_SIZE = 16
+INIT_LR = 1e-3
 
 WIDTH = 150
 HEIGHT = 150
 
-plot_name = 'flow_from_dir_classWeights_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
+plot_name = 'flow_from_dir_unbalanced2_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
 model_name = plot_name
 
 ##############################################################################
@@ -116,28 +117,28 @@ test_generator = test_datagen.flow_from_directory(test_img_dir,
 inputShape = inputShape(WIDTH, HEIGHT)
 model = createModel(inputShape)
 
-# '''No class balancing'''
-# H = model.fit_generator(train_generator,
-#                         steps_per_epoch = nb_train_samples // BATCH_SIZE,
-#                         epochs = EPOCHS,
-#                         validation_data = val_generator,
-#                         validation_steps = nb_val_samples // BATCH_SIZE
-#                         )
-
-
-'''Class balancing using class weights'''
-CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
-                                                  np.unique(train_generator.classes),
-                                                  train_generator.classes)
-print("Class weights:", CLASS_WEIGHTS)
-
+'''No class balancing'''
 H = model.fit_generator(train_generator,
                         steps_per_epoch = nb_train_samples // BATCH_SIZE,
                         epochs = EPOCHS,
                         validation_data = val_generator,
-                        validation_steps = nb_val_samples // BATCH_SIZE,
-                        class_weight = CLASS_WEIGHTS
+                        validation_steps = nb_val_samples // BATCH_SIZE
                         )
+
+
+# '''Class balancing using class weights'''
+# CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
+#                                                   np.unique(train_generator.classes),
+#                                                   train_generator.classes)
+# print("Class weights:", CLASS_WEIGHTS)
+
+# H = model.fit_generator(train_generator,
+#                         steps_per_epoch = nb_train_samples // BATCH_SIZE,
+#                         epochs = EPOCHS,
+#                         validation_data = val_generator,
+#                         validation_steps = nb_val_samples // BATCH_SIZE,
+#                         class_weight = CLASS_WEIGHTS
+#                         )
 
 
 model.save(model_dir + model_name)
