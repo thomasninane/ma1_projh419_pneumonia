@@ -23,19 +23,44 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_dir/'
+img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
 test_img_dir = img_dir + 'test/'
 train_img_dir = img_dir + 'train/'
 val_img_dir = img_dir + 'val/'
 
 csv_dir = 'csv/'
-model_dir = '../MA1_PROJH419_pneumonia_data/models/'
+model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
+
 model_name = 'flow_from_dir_unbalanced_w150_h150_e20'
 
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
+
+##############################################################################
+#FUNCTIONS
+##############################################################################
+
+def regroup_and_shuffle(df0, df1):
+    df = df0
+    df = df.append(df1, ignore_index=True)
+    
+    df = df.sample(frac=1)  #Shuffle
+    df = df.reset_index(drop="True")
+    return df
+
+def predictions(ls):
+    res_binary = []
+    res_string = []
+    for element in ls:
+        if element >= 0.5:
+            res_binary.append(1)
+            res_string.append('PNEUMONIA')
+        else:
+            res_binary.append(0)
+            res_string.append('NORMAL')
+    return res_binary, res_string
 
 ##############################################################################
 #DATAFRAME HANDLING
@@ -46,21 +71,15 @@ df_test_n = df_test_n[['name', 'set_name', 'normal/pneumonia']]
 print('Test Normal DF')
 print(df_test_n.head())
 
+
 df_test_p = pd.read_csv(csv_dir + 'test_pneumonia.csv')
 df_test_p = df_test_p[['name', 'set_name', 'normal/pneumonia']]
 print('Test Pneumonia DF')
 print(df_test_p.head())
 
-def regroup_and_shuffle(df0, df1):
-    df = df0
-    df = df.append(df1, ignore_index=True)
-    
-    df = df.sample(frac=1)  #Shuffle
-    df = df.reset_index(drop="True")
-    return df
 
-df = pd.concat([df_test_n, df_test_p], ignore_index=True)
-#df = regroup_and_shuffle(df_test_n, df_test_p)
+#df = pd.concat([df_test_n, df_test_p], ignore_index=True)
+df = regroup_and_shuffle(df_test_n, df_test_p)
 print('Test Combined DF')
 print(df.head())
 
@@ -77,7 +96,7 @@ test_datagen = ImageDataGenerator(rescale = 1./255)
 #                                                   )
 
 test_generator = test_datagen.flow_from_dataframe(dataframe = df,
-                                                  directory = '../MA1_PROJH419_pneumonia_data/flow_from_df/test',
+                                                  directory = test_img_dir,
                                                   x_col = 'name',
                                                   y_col = 'normal/pneumonia',
                                                   class_mode = 'binary',
@@ -95,17 +114,6 @@ print('Scores: ' + str(scores[1]*100))
 Y_pred = model.predict(test_generator)
 df['predicted (probability)'] = Y_pred
 
-def predictions(ls):
-    res_binary = []
-    res_string = []
-    for element in ls:
-        if element >= 0.5:
-            res_binary.append(1)
-            res_string.append('PNEUMONIA')
-        else:
-            res_binary.append(0)
-            res_string.append('NORMAL')
-    return res_binary, res_string
 
 y_pred, y_pred_str = predictions(Y_pred)
 df['predicted (string)'] = y_pred_str

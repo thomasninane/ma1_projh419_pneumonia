@@ -16,7 +16,7 @@ from collections import Counter
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_dir/'
+img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
 test_img_dir = img_dir + 'test/'
 train_img_dir = img_dir + 'train/'
 val_img_dir = img_dir + 'val/'

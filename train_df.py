@@ -22,14 +22,14 @@ from sklearn.utils import class_weight
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../MA1_PROJH419_pneumonia_data/flow_from_df/'
+img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
 test_img_dir = img_dir + 'test/'
 train_img_dir = img_dir + 'train/'
 val_img_dir = img_dir + 'val/'
 
 csv_dir = 'csv/'
 plot_dir = 'plots/'
-model_dir = '../MA1_PROJH419_pneumonia_data/models/'
+model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
 
 nb_test_samples = 624
 nb_train_samples = 5216
