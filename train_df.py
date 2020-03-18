@@ -41,7 +41,9 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-plot_name = 'flow_from_df_oversample_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
+#unbalanced, classWeights, oversample, undersample
+class_balance = 'classWeights'
+plot_name = 'flow_from_df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
 model_name = plot_name
 
 ##############################################################################
@@ -116,7 +118,7 @@ def oversample_or_undersample(string, df0, df1):
     print("Len of train_normal (unbalanced): " , df0.shape[0])
     print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
     
-    if (string=='no'):
+    if (string=='unbalanced') or (string=='classWeights'):
         df = regroup_and_shuffle(df0, df1)
         return df
     
@@ -148,8 +150,8 @@ df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv')
 df_train_p = df_train_p[['name', 'set_name', 'normal/pneumonia']]
 print(df_train_p.head())
 
-'''Oversampling/Undersampling (no, undersample, oversample)'''
-df_train_balanced = oversample_or_undersample('oversample', df_train_n, df_train_p)
+'''Oversampling/Undersampling (unbalanced, classWeights, undersample, oversample)'''
+df_train_balanced = oversample_or_undersample(class_balance, df_train_n, df_train_p)
 
 
 ##############################################################################
@@ -188,12 +190,28 @@ test_generator = test_datagen.flow_from_directory(test_img_dir,
 inputShape = inputShape(WIDTH, HEIGHT)
 model = createModel(inputShape)
 
-H = model.fit_generator(train_generator,
-                        steps_per_epoch = nb_train_samples // BATCH_SIZE,
-                        epochs = EPOCHS,
-                        validation_data = val_generator,
-                        validation_steps = nb_val_samples // BATCH_SIZE
-                        )
+
+if class_balance == 'classWeights':
+    CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
+                                                      np.unique(train_generator.classes),
+                                                      train_generator.classes)
+    print("Class weights:", CLASS_WEIGHTS)
+    
+    H = model.fit_generator(train_generator,
+                            steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                            epochs = EPOCHS,
+                            validation_data = val_generator,
+                            validation_steps = nb_val_samples // BATCH_SIZE,
+                            class_weight = CLASS_WEIGHTS
+                            )
+else:
+    H = model.fit_generator(train_generator,
+                            steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                            epochs = EPOCHS,
+                            validation_data = val_generator,
+                            validation_steps = nb_val_samples // BATCH_SIZE
+                            )
+
 
 model.save(model_dir + model_name)
 

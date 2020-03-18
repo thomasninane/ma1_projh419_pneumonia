@@ -31,7 +31,7 @@ val_img_dir = img_dir + 'val/'
 csv_dir = 'csv/'
 model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
 
-model_name = 'flow_from_dir_unbalanced_w150_h150_e20'
+model_name = 'flow_from_dir_classWeights_w150_h150_e20'
 
 BATCH_SIZE = 16
 
