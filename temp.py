@@ -16,7 +16,7 @@ from keras.layers import Activation, Dropout, Flatten, Dense
 from keras import backend as K
 
 from sklearn.utils import class_weight
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 
 ##############################################################################
 #PARAMETERS
@@ -42,10 +42,12 @@ HEIGHT = 150
 
 #unbalanced, classWeights, oversample, undersample
 class_balance = 'unbalanced'
-plot_name = 'flow_from_df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
+split = 'False'
+k = 5
+
+plot_name = 'df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_s=' + str(split)
 model_name = plot_name
 
-split = 'True'
 
 ##############################################################################
 #FUNCTIONS
@@ -165,6 +167,16 @@ if split=='True':
 '''Oversampling/Undersampling the train dataframe (unbalanced, classWeights, undersample, oversample)'''
 df_train = oversample_or_undersample(class_balance, df_train_n, df_train_p)
 
+##############################################################################
+# Stratified K Fold
+##############################################################################
+
+kf = StratifiedKFold(n_splits = k, shuffle = True, random_state = 2)
+result = next(kf.split(df_train, df_train['normal/pneumonia']), None)
+print(result)
+
+train = df_train.iloc[result[0]]
+val = df_train.iloc[result[1]]
 
 ##############################################################################
 #

@@ -8,43 +8,56 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib
+import tensorflow as tf
 
-from keras.preprocessing.image import ImageDataGenerator, load_img
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Activation, Dropout, Flatten, Dense
-from keras import backend as K
+from datetime import datetime
+
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
 
 from sklearn.utils import class_weight
+from sklearn.model_selection import train_test_split
+
 
 ##############################################################################
 #PARAMETERS
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
-test_img_dir = img_dir + 'test/'
-train_img_dir = img_dir + 'train/'
-val_img_dir = img_dir + 'val/'
+img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
+img_dir_df = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
 
 csv_dir = 'csv/'
-plot_dir = 'plots/'
-model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
+plot_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/plots/'
+#model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
+model_dir = '..\\..\\OneDrive\\Temp\\MA1_PROJH419_pneumonia_data\\models\\'
+logDir = '..\\..\\OneDrive\\Temp\\MA1_PROJH419_pneumonia_data\\logs\\'
 
-nb_test_samples = 624
-nb_train_samples = 5216
+# nb_test_samples = 624
+# nb_train_samples = 5216
 nb_val_samples = 16
 
-EPOCHS = 20
+EPOCHS = 5
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
 #unbalanced, classWeights, oversample, undersample
-class_balance = 'classWeights'
-plot_name = 'flow_from_df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
-model_name = plot_name
+class_balance = 'unbalanced'
+split = 'False'
+
+date = datetime.today().strftime('%Y-%m-%d--%H-%M-%S')
+NAME = 'df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_s=' + str(split) + '_' + date
+print(NAME)
+
+# plot_name = 'df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_s=' + str(split) + "-{}".format(int(time.time()))
+# model_name = plot_name
+
 
 ##############################################################################
 #FUNCTIONS
@@ -150,13 +163,27 @@ df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv')
 df_train_p = df_train_p[['name', 'set_name', 'normal/pneumonia']]
 print(df_train_p.head())
 
-'''Oversampling/Undersampling (unbalanced, classWeights, undersample, oversample)'''
-df_train_balanced = oversample_or_undersample(class_balance, df_train_n, df_train_p)
+
+
+'''Train Test Split'''
+if split=='True':
+    df_train_n, df_val_n = train_test_split(df_train_n, test_size=0.2)
+    df_train_p, df_val_p = train_test_split(df_train_p, test_size=0.2)
+    
+    df_val = regroup_and_shuffle(df_val_n, df_val_p)
+    nb_val_samples = df_val.shape[0]
+
+
+'''Oversampling/Undersampling the train dataframe (unbalanced, classWeights, undersample, oversample)'''
+df_train = oversample_or_undersample(class_balance, df_train_n, df_train_p)
 
 
 ##############################################################################
 #
 ##############################################################################
+
+#tensorboard = TensorBoard(log_dir='../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/logs/' + NAME)
+tensorboard = TensorBoard(log_dir = logDir + NAME)
 
 train_datagen = ImageDataGenerator(rescale = 1./255,
                                    shear_range = 0.2,
@@ -166,8 +193,8 @@ train_datagen = ImageDataGenerator(rescale = 1./255,
 
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
-train_generator = train_datagen.flow_from_dataframe(dataframe = df_train_balanced,
-                                                    directory = img_dir + 'train/',
+train_generator = train_datagen.flow_from_dataframe(dataframe = df_train,
+                                                    directory = img_dir_df + 'train/',
                                                     x_col = 'name',
                                                     y_col = 'normal/pneumonia',
                                                     target_size = (WIDTH, HEIGHT),
@@ -175,17 +202,21 @@ train_generator = train_datagen.flow_from_dataframe(dataframe = df_train_balance
                                                     class_mode = 'binary'
                                                     )
 
-val_generator = test_datagen.flow_from_directory(val_img_dir,
-                                                 target_size = (WIDTH, HEIGHT),
-                                                 batch_size = BATCH_SIZE,
-                                                 class_mode = 'binary'
-                                                 )
-
-test_generator = test_datagen.flow_from_directory(test_img_dir,
-                                                  target_size = (WIDTH, HEIGHT),
-                                                  batch_size = BATCH_SIZE,
-                                                  class_mode = 'binary'
-                                                  )
+if split=='True':
+    val_generator = test_datagen.flow_from_dataframe(dataframe = df_val,
+                                                    directory = img_dir_df + 'train/',
+                                                    x_col = 'name',
+                                                    y_col = 'normal/pneumonia',
+                                                    target_size = (WIDTH, HEIGHT),
+                                                    batch_size = BATCH_SIZE,
+                                                    class_mode = 'binary'
+                                                    )
+else:
+    val_generator = test_datagen.flow_from_directory(img_dir + 'val/',
+                                                      target_size = (WIDTH, HEIGHT),
+                                                      batch_size = BATCH_SIZE,
+                                                      class_mode = 'binary'
+                                                      )
 
 inputShape = inputShape(WIDTH, HEIGHT)
 model = createModel(inputShape)
@@ -198,7 +229,7 @@ if class_balance == 'classWeights':
     print("Class weights:", CLASS_WEIGHTS)
     
     H = model.fit_generator(train_generator,
-                            steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                            steps_per_epoch = df_train.shape[0] // BATCH_SIZE,
                             epochs = EPOCHS,
                             validation_data = val_generator,
                             validation_steps = nb_val_samples // BATCH_SIZE,
@@ -206,14 +237,15 @@ if class_balance == 'classWeights':
                             )
 else:
     H = model.fit_generator(train_generator,
-                            steps_per_epoch = nb_train_samples // BATCH_SIZE,
+                            steps_per_epoch = df_train.shape[0] // BATCH_SIZE,
                             epochs = EPOCHS,
                             validation_data = val_generator,
-                            validation_steps = nb_val_samples // BATCH_SIZE
+                            validation_steps = nb_val_samples // BATCH_SIZE,
+                            callbacks = [tensorboard]
                             )
 
 
-model.save(model_dir + model_name)
+model.save(model_dir + NAME)
 
 ###############################################################################
 #GENERATING PLOTS
@@ -238,6 +270,6 @@ plt.title("Training Loss and Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
-plt.savefig(plot_dir + plot_name + ".png")
+plt.savefig(plot_dir + NAME + ".png")
 
 print("Finished")

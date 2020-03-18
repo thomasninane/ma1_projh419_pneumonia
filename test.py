@@ -23,15 +23,13 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 ##############################################################################
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
-test_img_dir = img_dir + 'test/'
-train_img_dir = img_dir + 'train/'
-val_img_dir = img_dir + 'val/'
+img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
+img_dir_df = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
 
 csv_dir = 'csv/'
 model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
 
-model_name = 'flow_from_dir_classWeights_w150_h150_e20'
+model_name = 'df_unbalanced_w150_h150_e20_s=True'
 
 BATCH_SIZE = 16
 
@@ -69,19 +67,19 @@ def predictions(ls):
 df_test_n = pd.read_csv(csv_dir + 'test_normal.csv')
 df_test_n = df_test_n[['name', 'set_name', 'normal/pneumonia']]
 print('Test Normal DF')
-print(df_test_n.head())
+print(df_test_n.head(), "\n")
 
 
 df_test_p = pd.read_csv(csv_dir + 'test_pneumonia.csv')
 df_test_p = df_test_p[['name', 'set_name', 'normal/pneumonia']]
 print('Test Pneumonia DF')
-print(df_test_p.head())
+print(df_test_p.head(), "\n")
 
 
 #df = pd.concat([df_test_n, df_test_p], ignore_index=True)
 df = regroup_and_shuffle(df_test_n, df_test_p)
 print('Test Combined DF')
-print(df.head())
+print(df.head(), "\n")
 
 ##############################################################################
 #
@@ -89,14 +87,14 @@ print(df.head())
 
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
-# test_generator = test_datagen.flow_from_directory(test_img_dir,
+# test_generator = test_datagen.flow_from_directory(img_dir + 'test/',
 #                                                   target_size = (WIDTH, HEIGHT),
 #                                                   batch_size = BATCH_SIZE,
 #                                                   class_mode = 'binary'
 #                                                   )
 
 test_generator = test_datagen.flow_from_dataframe(dataframe = df,
-                                                  directory = test_img_dir,
+                                                  directory = img_dir_df + 'test/',
                                                   x_col = 'name',
                                                   y_col = 'normal/pneumonia',
                                                   class_mode = 'binary',
