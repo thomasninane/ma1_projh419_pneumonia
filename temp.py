@@ -2,37 +2,43 @@
 #IMPORTS
 ##############################################################################
 
+
 import os
 import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib
+import tensorflow as tf
 
-from keras.preprocessing.image import ImageDataGenerator, load_img
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Activation, Dropout, Flatten, Dense
-from keras import backend as K
+from datetime import datetime
+
+from tensorflow.keras import backend as kB
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
 
 from sklearn.utils import class_weight
-from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
+from sklearn.model_selection import train_test_split
+
 
 ##############################################################################
 #PARAMETERS
 ##############################################################################
+
+
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
-img_dir_df = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
+IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
+IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 
-csv_dir = 'csv/'
-plot_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/plots/'
-model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
+CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
+MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
+LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 
-# nb_test_samples = 624
-# nb_train_samples = 5216
-nb_val_samples = 16
 
 EPOCHS = 20
 BATCH_SIZE = 16
@@ -40,18 +46,17 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-#unbalanced, classWeights, oversample, undersample
-class_balance = 'unbalanced'
-split = 'False'
-k = 5
+BALANCE_TYPE = 'no'         #no, weights, over, under
+K = 5
 
-plot_name = 'df_' + class_balance + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_s=' + str(split)
-model_name = plot_name
+date = datetime.today().strftime('%Y-%m-%d_%H-%M')
+NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
 
 
 ##############################################################################
 #FUNCTIONS
 ##############################################################################
+
 
 def createModel(inputShape):
     model = Sequential()
@@ -80,14 +85,52 @@ def createModel(inputShape):
                   )
     return model
 
+
 def inputShape(WIDTH, HEIGHT):
-    if K.image_data_format() == 'channels_first':
-        inputshape = (3, WIDTH, HEIGHT)
+    if kB.image_data_format() == 'channels_first':
+        input_shape = (3, WIDTH, HEIGHT)
     else:
-        inputShape = (WIDTH, HEIGHT, 3)
-    return inputShape
+        input_shape = (WIDTH, HEIGHT, 3)
+    return input_shape
+
+
+def balanceClasses(balanceType, df0, df1):
+    print("Len of train_normal (unbalanced): " , df0.shape[0])
+    print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
+    
+    if (balanceType=='no') or (balanceType=='weights'):
+        df = mergeAndShuffle(df0, df1)
+        return df
+    
+    else:
+        if balanceType == 'under':
+            df0, df1 = undersample(df0, df1)
+        elif balanceType == 'over':
+            df0, df1 = oversample(df0, df1)
+        else:
+            print('Class balancing error')
+            return 0
+        
+        print("Len of train_normal ( after balanceClasses() ): ", df0.shape[0])
+        print("Len of train_pneumonia ( after balanceClasses() ): ", df1.shape[0])
+        
+        df = mergeAndShuffle(df0, df1)
+        
+        return df
+
+
+def mergeAndShuffle(df0, df1):
+    '''merges two dataframes and shuffles the merged dataframe'''
+    df = df0
+    df = df.append(df1, ignore_index=True)
+    
+    df = df.sample(frac=1)  #Shuffle
+    df = df.reset_index(drop="True")
+    return df
+
 
 def undersample(df0, df1):
+    '''undersamples the data in the biggest class'''
     minimum = min(df0.shape[0], df1.shape[0])
 
     df0_under = df0.sample(minimum)
@@ -95,7 +138,9 @@ def undersample(df0, df1):
     
     return df0_under, df1_under
 
+
 def oversample(df0, df1):
+    '''oversamples the data in the smallest class (by duplicating items)'''
     maximum = max(df0.shape[0], df1.shape[0])
     
     df0_over = df0.sample(maximum, replace=True)
@@ -109,163 +154,134 @@ def oversample(df0, df1):
     
     return df0_over, df1_over
 
-def regroup_and_shuffle(df0, df1):
-    df = df0
-    df = df.append(df1, ignore_index=True)
-    
-    df = df.sample(frac=1)  #Shuffle
-    df = df.reset_index(drop="True")
-    return df
 
-def oversample_or_undersample(string, df0, df1):
-    print("Len of train_normal (unbalanced): " , df0.shape[0])
-    print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
+def shuffleAndDivide(df):
+    '''returns an array of k dataframes (they all have the same size)'''
+    df = df.sample(frac=1)
+    df = df.reset_index(drop="True")
+    res = np.array_split(df, K)
     
-    if (string=='unbalanced') or (string=='classWeights'):
-        df = regroup_and_shuffle(df0, df1)
-        return df
+    return res  
+
+
+def mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p):
+    '''merges the normal df and the pneumonia df into one subset of a dictionary (with class balancing and shuffling)'''
+    subsets = dict()
     
-    else:
-        if string == 'undersample':
-            df0, df1 = undersample(df0, df1)
-        elif string == 'oversample':
-            df0, df1 = oversample(df0, df1)
+    for i in range(K):
+        subsets[i]  = balanceClasses(BALANCE_TYPE, ls_train_n[i], ls_train_p[i])
+    
+    return subsets
+
+
+def setTrainAndValidationSet(subsets):
+    '''returns one dictionary with the validation sets and another dictionary with the k-1 combined training sets'''
+    val_sets = dict()
+    train_sets = dict()
+    
+    for i in range(K):
+        val_sets[i] = subsets[i]
+    
+    '''combine the other subsets'''
+    for i in range(K):
+       if i==0:
+           train_sets[i] = subsets[1]
+           for j in range(2, K):
+              train_sets[i] =  train_sets[i].append(subsets[j], ignore_index=True)
+       elif i==K-1:
+           train_sets[i] = subsets[0]
+           for j in range(1, K-1):
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
+       else:
+           train_sets[i] = subsets[0]
+           for j in range(1, i):
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
+           for j in range(i+1, K):
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
+   
+    return val_sets, train_sets
+
+
+def trainModel(val_sets, train_sets):
+    '''trains the model for k folds and returns a dictionary containing the history of each model'''
+    
+    History = dict()
+    
+    for i in range(K):
+        print('RUN: ' + str(i+1))
+        
+        name = NAME + str(i+1)
+        tensorboard = TensorBoard(log_dir = LOG_DIR + name)
+
+        checkpoint_path = MODEL_DIR + name + "/cp.ckpt"
+        checkpoint_dir = os.path.dirname(checkpoint_path)
+        cp_callback = ModelCheckpoint( filepath=checkpoint_path, save_weights_only=True, verbose=1 )
+                
+        train_generator = train_datagen.flow_from_dataframe(dataframe = train_sets[i],
+                                                            directory = IMG_DIR_DF + 'train/',
+                                                            x_col = 'name',
+                                                            y_col = 'normal/pneumonia',
+                                                            target_size = (WIDTH, HEIGHT),
+                                                            batch_size = BATCH_SIZE,
+                                                            class_mode = 'binary'
+                                                            )
+    
+        val_generator = test_datagen.flow_from_dataframe(dataframe = val_sets[i],
+                                                         directory = IMG_DIR_DF + 'train/',
+                                                         x_col = 'name',
+                                                         y_col = 'normal/pneumonia',
+                                                         target_size = (WIDTH, HEIGHT),
+                                                         batch_size = BATCH_SIZE,
+                                                         class_mode = 'binary',
+                                                         )
+        
+    
+        if BALANCE_TYPE == 'classWeights':
+            CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
+                                                              np.unique(train_generator.classes),
+                                                              train_generator.classes)
+            print("Class weights:", CLASS_WEIGHTS)
+            
+            H = model.fit(train_generator,
+                                    steps_per_epoch = train_generator.samples // BATCH_SIZE,
+                                    epochs = EPOCHS,
+                                    validation_data = val_generator,
+                                    validation_steps = val_generator.samples // BATCH_SIZE,
+                                    callbacks = [tensorboard, cp_callback],
+                                    class_weight = CLASS_WEIGHTS
+                                    )
+        
         else:
-            print('oversample or undersample error')
-            return 0
+            H = model.fit(train_generator,
+                                    steps_per_epoch =  train_generator.samples // BATCH_SIZE,
+                                    epochs = EPOCHS,
+                                    validation_data = val_generator,
+                                    validation_steps = val_generator.samples // BATCH_SIZE,
+                                    callbacks = [tensorboard, cp_callback]
+                                    )
+            
+        History[i] = H
         
-        print("Len of train_normal (balanced): ", df0.shape[0])
-        print("Len of train_pneumonia (balanced): ", df1.shape[0])
-        
-        df = regroup_and_shuffle(df0, df1)
-        return df
-    
+    return History
+
 
 ##############################################################################
 #DATAFRAME
 ##############################################################################
 
-df_train_n = pd.read_csv(csv_dir + 'train_normal.csv')
+
+df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv')
 df_train_n = df_train_n[['name', 'set_name', 'normal/pneumonia']]
 print(df_train_n.head())
 
-df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv')
+df_train_p = pd.read_csv(CSV_DIR + 'train_pneumonia.csv')
 df_train_p = df_train_p[['name', 'set_name', 'normal/pneumonia']]
 print(df_train_p.head())
 
+'''Divide the normal and pneumonia dataframes into k subsets'''
+ls_train_n = shuffleAndDivide(df_train_n)
+ls_train_p = shuffleAndDivide(df_train_p)
 
 
-'''Train Test Split'''
-if split=='True':
-    df_train_n, df_val_n = train_test_split(df_train_n, test_size=0.2)
-    df_train_p, df_val_p = train_test_split(df_train_p, test_size=0.2)
-    
-    df_val = regroup_and_shuffle(df_val_n, df_val_p)
-    nb_val_samples = df_val.shape[0]
-
-
-'''Oversampling/Undersampling the train dataframe (unbalanced, classWeights, undersample, oversample)'''
-df_train = oversample_or_undersample(class_balance, df_train_n, df_train_p)
-
-##############################################################################
-# Stratified K Fold
-##############################################################################
-
-kf = StratifiedKFold(n_splits = k, shuffle = True, random_state = 2)
-result = next(kf.split(df_train, df_train['normal/pneumonia']), None)
-print(result)
-
-train = df_train.iloc[result[0]]
-val = df_train.iloc[result[1]]
-
-##############################################################################
-#
-##############################################################################
-
-train_datagen = ImageDataGenerator(rescale = 1./255,
-                                   shear_range = 0.2,
-                                   zoom_range = 0.2,
-                                   horizontal_flip = True
-                                   )
-
-test_datagen = ImageDataGenerator(rescale = 1./255)
-
-train_generator = train_datagen.flow_from_dataframe(dataframe = df_train,
-                                                    directory = img_dir_df + 'train/',
-                                                    x_col = 'name',
-                                                    y_col = 'normal/pneumonia',
-                                                    target_size = (WIDTH, HEIGHT),
-                                                    batch_size = BATCH_SIZE,
-                                                    class_mode = 'binary'
-                                                    )
-
-if split=='True':
-    val_generator = test_datagen.flow_from_dataframe(dataframe = df_val,
-                                                    directory = img_dir_df + 'train/',
-                                                    x_col = 'name',
-                                                    y_col = 'normal/pneumonia',
-                                                    target_size = (WIDTH, HEIGHT),
-                                                    batch_size = BATCH_SIZE,
-                                                    class_mode = 'binary'
-                                                    )
-else:
-    val_generator = test_datagen.flow_from_directory(img_dir + 'val/',
-                                                      target_size = (WIDTH, HEIGHT),
-                                                      batch_size = BATCH_SIZE,
-                                                      class_mode = 'binary'
-                                                      )
-
-inputShape = inputShape(WIDTH, HEIGHT)
-model = createModel(inputShape)
-
-
-if class_balance == 'classWeights':
-    CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
-                                                      np.unique(train_generator.classes),
-                                                      train_generator.classes)
-    print("Class weights:", CLASS_WEIGHTS)
-    
-    H = model.fit_generator(train_generator,
-                            steps_per_epoch = df_train.shape[0] // BATCH_SIZE,
-                            epochs = EPOCHS,
-                            validation_data = val_generator,
-                            validation_steps = nb_val_samples // BATCH_SIZE,
-                            class_weight = CLASS_WEIGHTS
-                            )
-else:
-    H = model.fit_generator(train_generator,
-                            steps_per_epoch = df_train.shape[0] // BATCH_SIZE,
-                            epochs = EPOCHS,
-                            validation_data = val_generator,
-                            validation_steps = nb_val_samples // BATCH_SIZE
-                            )
-
-
-model.save(model_dir + model_name)
-
-###############################################################################
-#GENERATING PLOTS
-###############################################################################
-
-print("Generating plots")
-
-matplotlib.use("Agg")
-plt.style.use("ggplot")
-plt.figure()
-
-N = EPOCHS
-
-plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
-plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-#plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
-plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
-#plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
-plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
-
-plt.title("Training Loss and Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss/Accuracy")
-plt.legend(loc="lower left")
-plt.savefig(plot_dir + plot_name + ".png")
-
-print("Finished")
+data_sets = mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p)
+val_sets, train_sets = setTrainAndValidationSet(data_sets)

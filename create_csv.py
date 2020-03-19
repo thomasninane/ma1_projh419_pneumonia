@@ -2,6 +2,7 @@
 #IMPORTS
 ##############################################################################
 
+
 import os
 import numpy as np
 import pandas as pd
@@ -10,59 +11,65 @@ import matplotlib.pyplot as plt
 
 import cv2
 
+
 ##############################################################################
 #PARAMETERS
 ##############################################################################
+
+
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
-test_img_dir = img_dir + 'test/'
-train_img_dir = img_dir + 'train/'
-val_img_dir = img_dir + 'val/'
+IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 
-csv_dir = 'csv/'
-
-nb_test_samples = 624
-nb_train_samples = 5216
-nb_val_samples = 16
+CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
 
 ##############################################################################
 #FUNCTIONS
 ##############################################################################
 
-def get_names(directory):
-    names = os.listdir(directory)
-    return names
 
-def create_df(directory):
+def createDF(directory):
+    '''
+    Creates a dataframe
+    Each row contains the name of an image located in the directory
+    '''
     names = os.listdir(directory)
-    df = pd.DataFrame(names, columns = ['name'])
-    return df
-
-def add_set_name(df, SET_NAME):
-    set_name = []
-    for i in range(df.shape[0]):
-        set_name.append(SET_NAME)
+    df = pd.DataFrame(names, columns = ['filename'])
     
-    df['set_name'] = set_name
     return df
 
-def add_norm_or_pneu(df, NORM_PNEU):
-    norm_pneu = []
+
+def addSetType(df, dataset_type):
+    '''Adds the type of the set (train, val, test) to the df'''
+    res = []
     for i in range(df.shape[0]):
-        norm_pneu.append(NORM_PNEU)
+        res.append(dataset_type)
+    
+    df['dataset_type'] = res
+    
+    return df
+
+
+def addNormalOrPneumonia(df, normal_or_pneumonia):
+    '''Adds wheather the patient is normal or suffers from pneumonia to the df'''
+    res = []
+    for i in range(df.shape[0]):
+        res.append(normal_or_pneumonia)
         
-    df['normal/pneumonia'] = norm_pneu
-    return df
+    df['normal/pneumonia'] = res
     
-def add_img_dimensions(df, directory):
+    return df
+   
+
+def addImgDimensions(df, directory):
+    '''Adds the image dimensions to the df'''
     samples = df.shape[0]
     width = []
     height = []
     
     i=0
-    for name in df.loc[:, 'name']:
+    for name in df['filename']:
         i += 1
         img = cv2.imread(directory + name)
         height.append(img.shape[0])
@@ -72,41 +79,15 @@ def add_img_dimensions(df, directory):
         
     df['width'] = width
     df['height'] = height
+    
     return df 
 
-def create_csv(directory, csv_dir, set_name, disease):
-    name = set_name+'_'+disease
-    df = create_df(directory)
-    df = add_set_name(df, set_name)
-    df = add_norm_or_pneu(df, disease)
-    df = add_bacteria_or_virus(df)
-    df = add_img_dimensions(df, directory)
-    
-    print(df.head())
-    export_csv = df.to_csv(csv_dir + name +'.csv')
-    return 0
 
-def open_dataframes():
-    df_test_n = pd.read_csv(csv_dir + 'test_normal.csv').iloc[:,1:]
-    df_test_p = pd.read_csv(csv_dir + 'test_pneumonia.csv').iloc[:,1:]
-    
-    df_train_n = pd.read_csv(csv_dir + 'train_normal.csv').iloc[:,1:]
-    df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv').iloc[:,1:]
-    
-    df_val_n = pd.read_csv(csv_dir + 'val_normal.csv').iloc[:,1:]
-    df_val_p = pd.read_csv(csv_dir + 'val_pneumonia.csv').iloc[:,1:]
-    
-    return df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p
-
-def combine_dataframes(df1, df2, df3, df4, df5, df6):
-    df = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
-    export_csv = df.to_csv(csv_dir + 'combined.csv')
-    return df
-
-def add_bacteria_or_virus(df):
+def addNormalOrBacteriaOrVirus(df):
+    '''Adds wheather the patient is normal or suffers from bacterial/viral pneumonia to the df'''
     res = []
     
-    for name in df['name']:
+    for name in df['filename']:
         if 'bacteria' in name:
             res.append('bacteria')
         elif 'virus' in name:
@@ -114,57 +95,86 @@ def add_bacteria_or_virus(df):
         else:
             res.append('normal')
     
-    df['bacteria/virus/normal'] = res
+    df['normal/bacteria/virus'] = res
+    
+    return df
+
+
+def createCSV(set_type, normal_or_pneumonia):
+    '''Creates a csv file'''
+    directory = IMG_DIR + set_type +'/' + normal_or_pneumonia + '/'
+    csv_name = set_type + '_' + normal_or_pneumonia
+
+    df = createDF(directory)
+    df = addSetType(df, set_type)
+    df = addNormalOrPneumonia(df, normal_or_pneumonia)
+    df = addNormalOrBacteriaOrVirus(df)
+    df = addImgDimensions(df, directory)
+    
+    print(df.head())
+    export_csv = df.to_csv(CSV_DIR + csv_name +'.csv')
+    
+    return 0
+
+
+def openDataframes():
+    '''Opens and returns all 6 dataframes'''
+    df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv').iloc[:,1:]
+    df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv').iloc[:,1:]
+    
+    df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv').iloc[:,1:]
+    df_train_p = pd.read_csv(CSV_DIR + 'train_pneumonia.csv').iloc[:,1:]
+    
+    df_val_n = pd.read_csv(CSV_DIR + 'val_normal.csv').iloc[:,1:]
+    df_val_p = pd.read_csv(CSV_DIR + 'val_pneumonia.csv').iloc[:,1:]
+    
+    return df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p
+
+
+def combineDataframes(df1, df2, df3, df4, df5, df6):
+    df = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
+    export_csv = df.to_csv(CSV_DIR + 'combined.csv')
     return df
 
 ##############################################################################
 #TRAIN DF
 ##############################################################################
-SET_NAME = 'train'
+set_type = 'train'
 
-DISEASE = 'NORMAL' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
+normal_or_pneumonia = 'NORMAL' 
+createCSV(set_type, normal_or_pneumonia)
 
-DISEASE = 'PNEUMONIA' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
-
+normal_or_pneumonia = 'PNEUMONIA' 
+createCSV(set_type, normal_or_pneumonia)
 
 ##############################################################################
 #TEST DF
 ##############################################################################
 
-SET_NAME = 'test'
+set_type = 'test'
 
-DISEASE = 'NORMAL' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
+normal_or_pneumonia = 'NORMAL' 
+createCSV(set_type, normal_or_pneumonia)
 
-DISEASE = 'PNEUMONIA' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
-
+normal_or_pneumonia = 'PNEUMONIA' 
+createCSV(set_type, normal_or_pneumonia)
 
 ##############################################################################
 #VAL DF
 ##############################################################################
 
-SET_NAME = 'val'
+set_type = 'val'
 
-DISEASE = 'NORMAL' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
+normal_or_pneumonia = 'NORMAL' 
+createCSV(set_type, normal_or_pneumonia)
 
-DISEASE = 'PNEUMONIA' 
-directory = img_dir + SET_NAME + '/' + DISEASE +'/'
-create_csv(directory, csv_dir, SET_NAME, DISEASE)
-
+normal_or_pneumonia = 'PNEUMONIA' 
+createCSV(set_type, normal_or_pneumonia)
 
 ##############################################################################
 #COMBINE ALL DATAFRAMES
 ##############################################################################
 
-df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p = open_dataframes()
-df = combine_dataframes(df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p)
+df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p = openDataframes()
+df = combineDataframes(df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p)
 print(df.head())

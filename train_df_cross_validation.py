@@ -2,6 +2,7 @@
 #IMPORTS
 ##############################################################################
 
+
 import os
 import numpy as np
 import pandas as pd
@@ -12,8 +13,8 @@ import tensorflow as tf
 
 from datetime import datetime
 
-from tensorflow.keras import backend as K
-from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras import backend as kB
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.models import Sequential
@@ -26,36 +27,36 @@ from sklearn.model_selection import train_test_split
 ##############################################################################
 #PARAMETERS
 ##############################################################################
+
+
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
-img_dir_df = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
+IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
+IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 
-csv_dir = 'csv/'
-plot_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/plots/'
-#model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
-model_dir = '..\\..\\OneDrive\\Temp\\MA1_PROJH419_pneumonia_data\\models\\'
-logDir = '..\\..\\OneDrive\\Temp\\MA1_PROJH419_pneumonia_data\\logs\\'
+CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
+MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
+LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 
 
-EPOCHS = 3
+EPOCHS = 20
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
-balance_type = 'unbalanced'         #unbalanced, classWeights, oversample, undersample
+BALANCE_TYPE = 'no'         #no, weights, over, under
+K = 5
 
-
-date = datetime.today().strftime('%Y-%m-%d--%H-%M')
-NAME = date + '__' + balance_type + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
-
-k = 3
+date = datetime.today().strftime('%Y-%m-%d_%H-%M')
+NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
 
 
 ##############################################################################
 #FUNCTIONS
 ##############################################################################
+
 
 def createModel(inputShape):
     model = Sequential()
@@ -86,28 +87,28 @@ def createModel(inputShape):
 
 
 def inputShape(WIDTH, HEIGHT):
-    if K.image_data_format() == 'channels_first':
-        inputshape = (3, WIDTH, HEIGHT)
+    if kB.image_data_format() == 'channels_first':
+        input_shape = (3, WIDTH, HEIGHT)
     else:
-        inputShape = (WIDTH, HEIGHT, 3)
-    return inputShape
+        input_shape = (WIDTH, HEIGHT, 3)
+    return input_shape
 
 
 def balanceClasses(balanceType, df0, df1):
     print("Len of train_normal (unbalanced): " , df0.shape[0])
     print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
     
-    if (balanceType=='unbalanced') or (balanceType=='classWeights'):
+    if (balanceType=='no') or (balanceType=='weights'):
         df = mergeAndShuffle(df0, df1)
         return df
     
     else:
-        if balanceType == 'undersample':
+        if balanceType == 'under':
             df0, df1 = undersample(df0, df1)
-        elif balanceType == 'oversample':
+        elif balanceType == 'over':
             df0, df1 = oversample(df0, df1)
         else:
-            print('oversample or undersample error')
+            print('Class balancing error')
             return 0
         
         print("Len of train_normal ( after balanceClasses() ): ", df0.shape[0])
@@ -154,67 +155,71 @@ def oversample(df0, df1):
     return df0_over, df1_over
 
 
-def shuffleAndDivide(df, k):
+def shuffleAndDivide(df):
     '''returns an array of k dataframes (they all have the same size)'''
     df = df.sample(frac=1)
     df = df.reset_index(drop="True")
-    res = np.array_split(df, k)
+    res = np.array_split(df, K)
     
     return res  
 
 
-def mergePneumoniaAndNormalDataframes(k):
-    '''merges the normal df and the pneumonia df into one subset of a dictionary'''
+def mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p):
+    '''merges the normal df and the pneumonia df into one subset of a dictionary (with class balancing and shuffling)'''
     subsets = dict()
     
-    for i in range(k):
-        subsets[i]  = balanceClasses(balance_type, ls_train_n[i], ls_train_p[i])
+    for i in range(K):
+        subsets[i]  = balanceClasses(BALANCE_TYPE, ls_train_n[i], ls_train_p[i])
     
     return subsets
 
 
-def setTrainAndValidationSet(k, data_sets):
+def setTrainAndValidationSet(subsets):
     '''returns one dictionary with the validation sets and another dictionary with the k-1 combined training sets'''
     val_sets = dict()
     train_sets = dict()
     
-    for i in range(k):
-        val_sets[i] = data_sets[i]
+    for i in range(K):
+        val_sets[i] = subsets[i]
     
     '''combine the other subsets'''
-    for i in range(k):
+    for i in range(K):
        if i==0:
-           train_sets[i] = data_sets[1]
-           for j in range(2, k):
-              train_sets[i] =  train_sets[i].append(data_sets[j], ignore_index=True)
-       elif i==k-1:
-           train_sets[i] = data_sets[0]
-           for j in range(1, k-1):
-               train_sets[i] = train_sets[i].append(data_sets[j], ignore_index=True)
+           train_sets[i] = subsets[1]
+           for j in range(2, K):
+              train_sets[i] =  train_sets[i].append(subsets[j], ignore_index=True)
+       elif i==K-1:
+           train_sets[i] = subsets[0]
+           for j in range(1, K-1):
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
        else:
-           train_sets[i] = data_sets[0]
+           train_sets[i] = subsets[0]
            for j in range(1, i):
-               train_sets[i] = train_sets[i].append(data_sets[j], ignore_index=True)
-           for j in range(i+1, k):
-               train_sets[i] = train_sets[i].append(data_sets[j], ignore_index=True)
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
+           for j in range(i+1, K):
+               train_sets[i] = train_sets[i].append(subsets[j], ignore_index=True)
    
     return val_sets, train_sets
 
 
-def trainModel(k, val_sets, train_sets, balance_type, name):
+def trainModel(val_sets, train_sets):
     '''trains the model for k folds and returns a dictionary containing the history of each model'''
     
     History = dict()
     
-    for i in range(k):
-        print('K: ' + str(i))
+    for i in range(K):
+        print('RUN: ' + str(i+1))
         
-        NAME = name + '_run' + str(i)
-        tensorboard = TensorBoard(log_dir = logDir + NAME)
+        name = NAME + str(i+1)
+        tensorboard = TensorBoard(log_dir = LOG_DIR + name)
+
+        checkpoint_path = MODEL_DIR + name + "/cp.ckpt"
+        checkpoint_dir = os.path.dirname(checkpoint_path)
+        cp_callback = ModelCheckpoint( filepath=checkpoint_path, save_weights_only=True, verbose=1 )
                 
         train_generator = train_datagen.flow_from_dataframe(dataframe = train_sets[i],
-                                                            directory = img_dir_df + 'train/',
-                                                            x_col = 'name',
+                                                            directory = IMG_DIR_DF + 'train/',
+                                                            x_col = 'filename',
                                                             y_col = 'normal/pneumonia',
                                                             target_size = (WIDTH, HEIGHT),
                                                             batch_size = BATCH_SIZE,
@@ -222,44 +227,41 @@ def trainModel(k, val_sets, train_sets, balance_type, name):
                                                             )
     
         val_generator = test_datagen.flow_from_dataframe(dataframe = val_sets[i],
-                                                         directory = img_dir_df + 'train/',
-                                                         x_col = 'name',
+                                                         directory = IMG_DIR_DF + 'train/',
+                                                         x_col = 'filename',
                                                          y_col = 'normal/pneumonia',
                                                          target_size = (WIDTH, HEIGHT),
                                                          batch_size = BATCH_SIZE,
-                                                         class_mode = 'binary'
+                                                         class_mode = 'binary',
                                                          )
         
     
-        if balance_type == 'classWeights':
+        if BALANCE_TYPE == 'classWeights':
             CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
                                                               np.unique(train_generator.classes),
                                                               train_generator.classes)
             print("Class weights:", CLASS_WEIGHTS)
             
-            H = model.fit_generator(train_generator,
+            H = model.fit(train_generator,
                                     steps_per_epoch = train_generator.samples // BATCH_SIZE,
                                     epochs = EPOCHS,
                                     validation_data = val_generator,
                                     validation_steps = val_generator.samples // BATCH_SIZE,
-                                    callbacks = [tensorboard],
+                                    callbacks = [tensorboard, cp_callback],
                                     class_weight = CLASS_WEIGHTS
                                     )
         
         else:
-            # H = model.fit_generator(train_generator,
             H = model.fit(train_generator,
                                     steps_per_epoch =  train_generator.samples // BATCH_SIZE,
                                     epochs = EPOCHS,
                                     validation_data = val_generator,
                                     validation_steps = val_generator.samples // BATCH_SIZE,
-                                    callbacks = [tensorboard]
+                                    callbacks = [tensorboard, cp_callback]
                                     )
             
         History[i] = H
-        #model.save(model_dir + name)
         
-    #print('FINISHED')
     return History
 
 
@@ -267,30 +269,31 @@ def trainModel(k, val_sets, train_sets, balance_type, name):
 #DATAFRAME
 ##############################################################################
 
-df_train_n = pd.read_csv(csv_dir + 'train_normal.csv')
-df_train_n = df_train_n[['name', 'set_name', 'normal/pneumonia']]
+
+df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv')
+df_train_n = df_train_n[['filename', 'normal/pneumonia']]
 print(df_train_n.head())
 
-df_train_p = pd.read_csv(csv_dir + 'train_pneumonia.csv')
-df_train_p = df_train_p[['name', 'set_name', 'normal/pneumonia']]
+df_train_p = pd.read_csv(CSV_DIR + 'train_pneumonia.csv')
+df_train_p = df_train_p[['filename', 'normal/pneumonia']]
 print(df_train_p.head())
 
+'''Divide the normal and pneumonia dataframes into k subsets'''
+ls_train_n = shuffleAndDivide(df_train_n)
+ls_train_p = shuffleAndDivide(df_train_p)
 
-ls_train_n = shuffleAndDivide(df_train_n, k)
-ls_train_p = shuffleAndDivide(df_train_p, k)
 
-data_sets = mergePneumoniaAndNormalDataframes(k)
-val_sets, train_sets = setTrainAndValidationSet(k, data_sets)
+data_sets = mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p)
+val_sets, train_sets = setTrainAndValidationSet(data_sets)
     
-
 
 ##############################################################################
 #
 ##############################################################################
 
 
-inputShape = inputShape(WIDTH, HEIGHT)
-model = createModel(inputShape)
+input_shape = inputShape(WIDTH, HEIGHT)
+model = createModel(input_shape)
 
 train_datagen = ImageDataGenerator(rescale = 1./255,
                                     shear_range = 0.2,
@@ -301,22 +304,19 @@ train_datagen = ImageDataGenerator(rescale = 1./255,
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
 
-H = trainModel(k, val_sets, train_sets, balance_type, NAME)
-    
+H = trainModel(val_sets, train_sets)
 
-
-
-# model.save(model_dir + NAME)
 
 # ###############################################################################
 # #GENERATING PLOTS
 # ###############################################################################
 
+
 print("Generating plots")
 
 '''Making directory'''
-if not os.path.exists(plot_dir + NAME):
-    os.makedirs(plot_dir + NAME)
+if not os.path.exists(PLOT_DIR + NAME):
+    os.makedirs(PLOT_DIR + NAME)
 
 
 matplotlib.use("Agg")
@@ -331,7 +331,7 @@ plt.title("Training Loss on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
 plt.legend(loc="best")
-plt.savefig(plot_dir + NAME + "/train_loss.png")
+plt.savefig(PLOT_DIR + NAME + "/train_loss.png")
 
 
 plt.figure()
@@ -341,7 +341,7 @@ plt.title("Validation Loss on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
 plt.legend(loc="best")
-plt.savefig(plot_dir + NAME + "/val_loss.png")
+plt.savefig(PLOT_DIR + NAME + "/val_loss.png")
 
 
 plt.figure()
@@ -351,7 +351,7 @@ plt.title("Training Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
-plt.savefig(plot_dir + NAME + "/train_acc.png")
+plt.savefig(PLOT_DIR + NAME + "/train_acc.png")
 
 
 plt.figure()
@@ -361,6 +361,6 @@ plt.title("Validation Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
-plt.savefig(plot_dir + NAME + "/val_acc.png")
+plt.savefig(PLOT_DIR + NAME + "/val_acc.png")
 
 print("FINISHED")
