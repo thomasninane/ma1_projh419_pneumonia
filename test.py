@@ -2,55 +2,110 @@
 #IMPORTS
 ##############################################################################
 
+
+import gc
 import os
 import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib
+import tensorflow as tf
 
-from keras.preprocessing.image import ImageDataGenerator, load_img
-from keras.models import Sequential, load_model, Model
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Activation, Dropout, Flatten, Dense
-from keras import backend as K
+from datetime import datetime
+
+from tensorflow.keras import backend as kB
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
 
 from sklearn.utils import class_weight
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
 
 ##############################################################################
 #PARAMETERS
 ##############################################################################
+
+
 pd.set_option('display.expand_frame_repr', False)
 
-img_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_dir/'
-img_dir_df = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/flow_from_df/'
+IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
+IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 
-csv_dir = 'csv/'
-model_dir = '../../OneDrive/Temp/MA1_PROJH419_pneumonia_data/models/'
+CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
 
-model_name = 'df_unbalanced_w150_h150_e20_s=True'
 
+EPOCHS = 20
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
+NAME = '2020-03-19_23-44_over_w150_h150_e20_CV'
+RUN = 'run1'
+
+
 ##############################################################################
 #FUNCTIONS
 ##############################################################################
 
-def regroup_and_shuffle(df0, df1):
+
+def createModel(inputShape):
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), input_shape=inputShape))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    
+    model.add(Conv2D(32, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    
+    model.add(Conv2D(64, (3, 3)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    
+    model.add(Flatten())
+    model.add(Dense(64))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
+    
+    model.compile(loss='binary_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['accuracy']
+                  )
+    return model
+
+
+def inputShape():
+    if tf.keras.backend.image_data_format() == 'channels_first':
+        input_shape = (3, WIDTH, HEIGHT)
+    else:
+        input_shape = (WIDTH, HEIGHT, 3)
+    return input_shape
+
+
+def mergeAndShuffle(df0, df1):
+    '''merges two dataframes and shuffles the merged dataframe'''
     df = df0
     df = df.append(df1, ignore_index=True)
     
     df = df.sample(frac=1)  #Shuffle
     df = df.reset_index(drop="True")
+    
     return df
+
 
 def predictions(ls):
     res_binary = []
     res_string = []
+    
     for element in ls:
         if element >= 0.5:
             res_binary.append(1)
@@ -58,44 +113,49 @@ def predictions(ls):
         else:
             res_binary.append(0)
             res_string.append('NORMAL')
+    
     return res_binary, res_string
+
+def getCheckpointPath(word):
+    if word in NAME:
+        res =  MODEL_DIR + NAME + "/" + RUN + "/cp.ckpt"
+    else:
+        res =  MODEL_DIR + NAME + "/cp.ckpt"
+    print('Checkpoint Path: ', res, "\n")
+    return res
 
 ##############################################################################
 #DATAFRAME HANDLING
 ##############################################################################
 
-df_test_n = pd.read_csv(csv_dir + 'test_normal.csv')
-df_test_n = df_test_n[['name', 'set_name', 'normal/pneumonia']]
+df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv')
+df_test_n = df_test_n[['filename', 'normal/pneumonia']]
 print('Test Normal DF')
 print(df_test_n.head(), "\n")
 
 
-df_test_p = pd.read_csv(csv_dir + 'test_pneumonia.csv')
-df_test_p = df_test_p[['name', 'set_name', 'normal/pneumonia']]
+df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv')
+df_test_p = df_test_p[['filename', 'normal/pneumonia']]
 print('Test Pneumonia DF')
 print(df_test_p.head(), "\n")
 
 
 #df = pd.concat([df_test_n, df_test_p], ignore_index=True)
-df = regroup_and_shuffle(df_test_n, df_test_p)
+df = mergeAndShuffle(df_test_n, df_test_p)
 print('Test Combined DF')
 print(df.head(), "\n")
+
 
 ##############################################################################
 #
 ##############################################################################
 
+
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
-# test_generator = test_datagen.flow_from_directory(img_dir + 'test/',
-#                                                   target_size = (WIDTH, HEIGHT),
-#                                                   batch_size = BATCH_SIZE,
-#                                                   class_mode = 'binary'
-#                                                   )
-
 test_generator = test_datagen.flow_from_dataframe(dataframe = df,
-                                                  directory = img_dir_df + 'test/',
-                                                  x_col = 'name',
+                                                  directory = IMG_DIR_DF + 'test/',
+                                                  x_col = 'filename',
                                                   y_col = 'normal/pneumonia',
                                                   class_mode = 'binary',
                                                   batch_size = BATCH_SIZE,
@@ -103,7 +163,17 @@ test_generator = test_datagen.flow_from_dataframe(dataframe = df,
                                                   shuffle=False
                                                   )
 
-model = load_model(model_dir + model_name)
+input_shape = inputShape()
+model = createModel(input_shape)
+
+
+checkpoint_path = getCheckpointPath('CV')
+model.load_weights(checkpoint_path)
+
+
+##############################################################################
+#
+##############################################################################
 
 
 scores = model.evaluate_generator(test_generator)

@@ -3,6 +3,7 @@
 ##############################################################################
 
 
+import gc
 import os
 import numpy as np
 import pandas as pd
@@ -46,7 +47,7 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'no'         #no, weights, over, under
+BALANCE_TYPE = 'weights'         #no, weights, over, under
 K = 5
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
@@ -87,14 +88,37 @@ def createModel(inputShape):
 
 
 def inputShape(WIDTH, HEIGHT):
-    if kB.image_data_format() == 'channels_first':
+    if tf.keras.backend.image_data_format() == 'channels_first':
         input_shape = (3, WIDTH, HEIGHT)
     else:
         input_shape = (WIDTH, HEIGHT, 3)
     return input_shape
 
 
-def balanceClasses(balanceType, df0, df1):
+def balanceTrainSet(ls):
+    '''
+    Balances the train subsets.
+    Before applying balanceClasses(), we must separate the train subset in two dataframes (normal and peumonia)
+    '''
+    res = dict()
+    
+    print("BALANCE_TYPE:", BALANCE_TYPE)
+    for i in range(len(ls)):
+        
+        df = ls[i]
+        df_n = df[df['normal/pneumonia'] == 'NORMAL']
+        df_p = df[df['normal/pneumonia'] == 'PNEUMONIA']
+        
+        '''we can now apply balanceClasses() to the two dataframes'''
+        train_subset_balanced = balanceClasses(BALANCE_TYPE, df_n, df_p, i+1)
+        res[i] = train_subset_balanced
+        
+    return res
+
+
+def balanceClasses(balanceType, df0, df1, subset_number):
+    print("\n", "SUBSET NUMBER:", subset_number)
+    
     print("Len of train_normal (unbalanced): " , df0.shape[0])
     print("Len of train_pneumonia (unbalanced): " , df1.shape[0])
     
@@ -126,6 +150,7 @@ def mergeAndShuffle(df0, df1):
     
     df = df.sample(frac=1)  #Shuffle
     df = df.reset_index(drop="True")
+    
     return df
 
 
@@ -169,7 +194,8 @@ def mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p):
     subsets = dict()
     
     for i in range(K):
-        subsets[i]  = balanceClasses(BALANCE_TYPE, ls_train_n[i], ls_train_p[i])
+        #subsets[i]  = balanceClasses(BALANCE_TYPE, ls_train_n[i], ls_train_p[i])
+        subsets[i]  = mergeAndShuffle(ls_train_n[i], ls_train_p[i])
     
     return subsets
 
@@ -202,18 +228,21 @@ def setTrainAndValidationSet(subsets):
     return val_sets, train_sets
 
 
-def trainModel(val_sets, train_sets):
+def trainModel(input_shape, val_sets, train_sets):
     '''trains the model for k folds and returns a dictionary containing the history of each model'''
     
     History = dict()
     
     for i in range(K):
-        print('RUN: ' + str(i+1))
+        print("\n", "\n", 'RUN: ' + str(i+1))
         
-        name = NAME + str(i+1)
-        tensorboard = TensorBoard(log_dir = LOG_DIR + name)
+        model = createModel(input_shape)
+        
+        run = "run" + str(i+1)
+        
+        tensorboard = TensorBoard(log_dir = LOG_DIR + NAME + "\\" + run)
 
-        checkpoint_path = MODEL_DIR + name + "/cp.ckpt"
+        checkpoint_path = MODEL_DIR + NAME + "/" +  run + "/cp.ckpt"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         cp_callback = ModelCheckpoint( filepath=checkpoint_path, save_weights_only=True, verbose=1 )
                 
@@ -236,7 +265,7 @@ def trainModel(val_sets, train_sets):
                                                          )
         
     
-        if BALANCE_TYPE == 'classWeights':
+        if BALANCE_TYPE == 'weights':
             CLASS_WEIGHTS = class_weight.compute_class_weight("balanced",
                                                               np.unique(train_generator.classes),
                                                               train_generator.classes)
@@ -261,6 +290,9 @@ def trainModel(val_sets, train_sets):
                                     )
             
         History[i] = H
+        del model
+        tf.keras.backend.clear_session()
+        gc.collect()
         
     return History
 
@@ -272,19 +304,22 @@ def trainModel(val_sets, train_sets):
 
 df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv')
 df_train_n = df_train_n[['filename', 'normal/pneumonia']]
-print(df_train_n.head())
+print(df_train_n.head(), "\n")
 
 df_train_p = pd.read_csv(CSV_DIR + 'train_pneumonia.csv')
 df_train_p = df_train_p[['filename', 'normal/pneumonia']]
-print(df_train_p.head())
+print(df_train_p.head(), "\n")
 
 '''Divide the normal and pneumonia dataframes into k subsets'''
 ls_train_n = shuffleAndDivide(df_train_n)
 ls_train_p = shuffleAndDivide(df_train_p)
 
-
+'''Merge the normal and pneumonia subsets'''
 data_sets = mergePneumoniaAndNormalDataframes(ls_train_n, ls_train_p)
+
+
 val_sets, train_sets = setTrainAndValidationSet(data_sets)
+train_sets = balanceTrainSet(train_sets)
     
 
 ##############################################################################
@@ -293,7 +328,7 @@ val_sets, train_sets = setTrainAndValidationSet(data_sets)
 
 
 input_shape = inputShape(WIDTH, HEIGHT)
-model = createModel(input_shape)
+#model = createModel(input_shape)
 
 train_datagen = ImageDataGenerator(rescale = 1./255,
                                     shear_range = 0.2,
@@ -304,7 +339,7 @@ train_datagen = ImageDataGenerator(rescale = 1./255,
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
 
-H = trainModel(val_sets, train_sets)
+H = trainModel(input_shape, val_sets, train_sets)
 
 
 # ###############################################################################
