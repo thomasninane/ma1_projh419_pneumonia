@@ -1,0 +1,36 @@
+conda remove --name myenv --all
+conda update --all
+conda update spyder
+conda clean --all
+
+
+conda install anaconda-clean
+anaconda-clean
+anaconda-clean --yes
+
+#Install TensorFlow GPU
+conda create --name envname python=3.7
+conda activate envname
+pip install ipykernel
+python -m ipykernel install --user --name envname --display-name "envname"
+conda install tensorflow-gpu
+conda install jupyter
+pip install keras
+
+
+#Install OpenCV
+conda install -c anaconda opencv
+
+#Modules
+conda install spyder
+conda install pandas
+condas install pillow
+conda install scikit-learn
+conda install matplotlib
+
+#tensorflow version
+import tensorflow as tf
+print(tf.__version__)
+
+#kernel restart
+shift+ctrl+.

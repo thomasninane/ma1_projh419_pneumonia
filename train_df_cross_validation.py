@@ -47,7 +47,7 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'weights'         #no, weights, over, under
+BALANCE_TYPE = 'under'         #no, weights, over, under
 K = 5
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
@@ -238,7 +238,7 @@ def trainModel(input_shape, val_sets, train_sets):
         
         model = createModel(input_shape)
         
-        run = "run" + str(i+1)
+        run = "r" + str(i+1)
         
         tensorboard = TensorBoard(log_dir = LOG_DIR + NAME + "\\" + run)
 
