@@ -2,6 +2,7 @@ conda remove --name myenv --all
 conda update --all
 conda update spyder
 conda clean --all
+conda update -n base -c defaults conda
 
 
 conda install anaconda-clean
