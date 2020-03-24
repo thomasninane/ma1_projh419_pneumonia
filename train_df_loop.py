@@ -23,6 +23,8 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
 from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split
 
+from contextlib import redirect_stdout
+
 ##############################################################################
 # PARAMETERS
 ##############################################################################
@@ -34,21 +36,22 @@ IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
-PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
-MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
-LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
+# PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
+# MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
+SUMMARY_DIR = '../../OneDrive/Temp/projh419_data/loop/'
+LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\loop\\logs\\'
 
 EPOCHS = 20
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
+# K=5
 
-BALANCE_TYPE = 'under'  # no, weights, over, under
-K = 5
+BALANCE_TYPE = 'no'  # no, weights, over, under
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
-NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
+# NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
 
 
 ##############################################################################
@@ -71,9 +74,12 @@ def create_model(img_shape):
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Flatten())
+
     model.add(Dense(64))
     model.add(Activation('relu'))
+
     model.add(Dropout(0.5))
+
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
 
@@ -157,60 +163,6 @@ def oversample(df0, df1):
     return df0_over, df1_over
 
 
-def train_model(img_shape, val_df, train_df):
-    model = create_model(img_shape)
-
-    tensorboard = TensorBoard(log_dir=LOG_DIR + NAME)
-
-    checkpoint_path = MODEL_DIR + NAME + "/cp.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
-    cp_callback = ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=1)
-
-    train_generator = train_datagen.flow_from_dataframe(dataframe=train_df,
-                                                        directory=IMG_DIR_DF + 'train/',
-                                                        x_col='filename',
-                                                        y_col='normal/pneumonia',
-                                                        target_size=(WIDTH, HEIGHT),
-                                                        batch_size=BATCH_SIZE,
-                                                        class_mode='binary'
-                                                        )
-
-    val_generator = test_datagen.flow_from_dataframe(dataframe=val_df,
-                                                     directory=IMG_DIR_DF + 'train/',
-                                                     x_col='filename',
-                                                     y_col='normal/pneumonia',
-                                                     target_size=(WIDTH, HEIGHT),
-                                                     batch_size=BATCH_SIZE,
-                                                     class_mode='binary',
-                                                     )
-
-    if BALANCE_TYPE == 'weights':
-        class_weights = class_weight.compute_class_weight("balanced",
-                                                          np.unique(train_generator.classes),
-                                                          train_generator.classes)
-        print("Class weights:", class_weights)
-
-        H = model.fit(train_generator,
-                      steps_per_epoch=train_generator.samples // BATCH_SIZE,
-                      epochs=EPOCHS,
-                      validation_data=val_generator,
-                      validation_steps=val_generator.samples // BATCH_SIZE,
-                      callbacks=[tensorboard, cp_callback],
-                      class_weight=class_weights
-                      )
-
-    else:
-        H = model.fit(train_generator,
-                      steps_per_epoch=train_generator.samples // BATCH_SIZE,
-                      epochs=EPOCHS,
-                      validation_data=val_generator,
-                      validation_steps=val_generator.samples // BATCH_SIZE,
-                      callbacks=[tensorboard, cp_callback]
-                      )
-
-    return H
-
-
 ##############################################################################
 # DATAFRAME
 ##############################################################################
@@ -230,15 +182,13 @@ df_train_p, df_val_p = train_test_split(df_train_p, test_size=0.2)
 df_val = merge_and_shuffle(df_val_n, df_val_p)
 
 '''Oversampling/undersampling the train dataframe (unbalanced, classWeights, undersample, oversample)'''
-df_train = merge_and_shuffle(BALANCE_TYPE, df_train_n, df_train_p)
+df_train = merge_and_shuffle(df_train_n, df_train_p)
 
 ##############################################################################
 #
 ##############################################################################
 
-
 input_shape = input_shape()
-# model = create_model(input_shape)
 
 train_datagen = ImageDataGenerator(rescale=1. / 255,
                                    shear_range=0.2,
@@ -246,56 +196,83 @@ train_datagen = ImageDataGenerator(rescale=1. / 255,
                                    horizontal_flip=True
                                    )
 
-test_datagen = ImageDataGenerator(rescale=1. / 255)
+val_datagen = ImageDataGenerator(rescale=1. / 255)
 
-H = train_model(input_shape, df_val, df_train)
+train_generator = train_datagen.flow_from_dataframe(dataframe=df_train,
+                                                    directory=IMG_DIR_DF + 'train/',
+                                                    x_col='filename',
+                                                    y_col='normal/pneumonia',
+                                                    target_size=(WIDTH, HEIGHT),
+                                                    batch_size=BATCH_SIZE,
+                                                    class_mode='binary'
+                                                    )
 
-###############################################################################
-# GENERATING PLOTS
-###############################################################################
+val_generator = val_datagen.flow_from_dataframe(dataframe=df_val,
+                                                directory=IMG_DIR_DF + 'train/',
+                                                x_col='filename',
+                                                y_col='normal/pneumonia',
+                                                target_size=(WIDTH, HEIGHT),
+                                                batch_size=BATCH_SIZE,
+                                                class_mode='binary',
+                                                )
 
+##############################################################################
 
-print("Generating plots")
+dense_layers = [0, 1, 2, 3]
+layer_sizes = [16, 32, 64, 128]
+conv_layers = [1, 2, 3]
+dropouts = [0.2, 0.3, 0.45]
 
-'''Making directory'''
-if not os.path.exists(PLOT_DIR + NAME):
-    os.makedirs(PLOT_DIR + NAME)
+for dense_layer in dense_layers:
+    for layer_size in layer_sizes:
+        for conv_layer in conv_layers:
+            for dropout in dropouts:
+                # NAME = f"{dropout}-drop-{conv_layer}-conv-{layer_size}-nodes-{dense_layer}-dense-" + date
+                NAME = f"{dense_layer}-dense-{layer_size}-filters-{conv_layer}-conv-{dropout}-drop-" + date
+                print(NAME)
 
-matplotlib.use("Agg")
-plt.style.use("ggplot")
+                tensorboard = TensorBoard(log_dir=LOG_DIR + NAME)
 
-N = EPOCHS
+                model = Sequential()
 
-plt.figure()
-plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
-plt.title("Training Loss on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_loss.png")
+                model.add(Conv2D(layer_size, (3, 3), input_shape=input_shape))
+                model.add(Activation('relu'))
+                model.add(MaxPooling2D(pool_size=(2, 2)))
 
-plt.figure()
-plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-plt.title("Validation Loss on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/val_loss.png")
+                i = 2
+                for l in range(conv_layer - 1):
+                    model.add(Conv2D(layer_size * i, (3, 3), input_shape=input_shape))
+                    model.add(Activation('relu'))
+                    model.add(MaxPooling2D(pool_size=(2, 2)))
+                    i += 1
 
-plt.figure()
-plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
-plt.title("Training Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_acc.png")
+                model.add(Flatten())
+                for l in range(dense_layer):
+                    model.add(Dense(layer_size))
+                    model.add(Activation('relu'))
 
-plt.figure()
-plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
-plt.title("Validation Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/val_acc.png")
+                model.add(Dropout(dropout))
 
-print("FINISHED")
+                model.add(Dense(1))
+                model.add(Activation('sigmoid'))
+
+                model.compile(loss='binary_crossentropy',
+                              optimizer='rmsprop',
+                              metrics=['accuracy']
+                              )
+
+                with open(SUMMARY_DIR + NAME + '.txt', 'w') as f:
+                    with redirect_stdout(f):
+                        model.summary()
+
+                H = model.fit(train_generator,
+                              steps_per_epoch=train_generator.samples // BATCH_SIZE,
+                              epochs=EPOCHS,
+                              validation_data=val_generator,
+                              validation_steps=val_generator.samples // BATCH_SIZE,
+                              callbacks=[tensorboard]
+                              )
+
+                del model
+                tf.keras.backend.clear_session()
+                gc.collect()

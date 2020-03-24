@@ -58,6 +58,7 @@ NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e'
 
 def create_model(img_shape):
     model = Sequential()
+
     model.add(Conv2D(32, (3, 3), input_shape=img_shape))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -71,9 +72,12 @@ def create_model(img_shape):
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Flatten())
+
     model.add(Dense(64))
     model.add(Activation('relu'))
+
     model.add(Dropout(0.5))
+
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
 
@@ -81,6 +85,7 @@ def create_model(img_shape):
                   optimizer='rmsprop',
                   metrics=['accuracy']
                   )
+
     return model
 
 
