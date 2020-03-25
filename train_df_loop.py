@@ -41,14 +41,14 @@ CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 SUMMARY_DIR = '../../OneDrive/Temp/projh419_data/loop/'
 LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\loop\\logs\\'
 
-EPOCHS = 20
-BATCH_SIZE = 16
+EPOCHS = 15
+BATCH_SIZE = 32
 
 WIDTH = 150
 HEIGHT = 150
 # K=5
 
-BALANCE_TYPE = 'no'  # no, weights, over, under
+BALANCE_TYPE = 'under'  # no, weights, over, under
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
 # NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
@@ -99,20 +99,18 @@ def input_shape():
     return res
 
 
-def balance_classes(balance_type, df0, df1, subset_number):
-    print("\n", "SUBSET NUMBER:", subset_number)
-
+def balance_classes(df0, df1):
     print("Len of train_normal (unbalanced): ", df0.shape[0])
     print("Len of train_pneumonia (unbalanced): ", df1.shape[0])
 
-    if (balance_type == 'no') or (balance_type == 'weights'):
+    if (BALANCE_TYPE == 'no') or (BALANCE_TYPE == 'weights'):
         df = merge_and_shuffle(df0, df1)
         return df
 
     else:
-        if balance_type == 'under':
+        if BALANCE_TYPE == 'under':
             df0, df1 = undersample(df0, df1)
-        elif balance_type == 'over':
+        elif BALANCE_TYPE == 'over':
             df0, df1 = oversample(df0, df1)
         else:
             print('Class balancing error')
@@ -182,7 +180,7 @@ df_train_p, df_val_p = train_test_split(df_train_p, test_size=0.2)
 df_val = merge_and_shuffle(df_val_n, df_val_p)
 
 '''Oversampling/undersampling the train dataframe (unbalanced, classWeights, undersample, oversample)'''
-df_train = merge_and_shuffle(df_train_n, df_train_p)
+df_train = balance_classes(df_train_n, df_train_p)
 
 ##############################################################################
 #
@@ -193,7 +191,9 @@ input_shape = input_shape()
 train_datagen = ImageDataGenerator(rescale=1. / 255,
                                    shear_range=0.2,
                                    zoom_range=0.2,
-                                   horizontal_flip=True
+                                   horizontal_flip=False,
+                                   vertical_flip=False,
+                                   brightness_range=[0.75, 1.25]
                                    )
 
 val_datagen = ImageDataGenerator(rescale=1. / 255)
@@ -219,9 +219,9 @@ val_generator = val_datagen.flow_from_dataframe(dataframe=df_val,
 ##############################################################################
 
 dense_layers = [0, 1, 2, 3]
-layer_sizes = [16, 32, 64, 128]
+layer_sizes = [16, 32, 64]
 conv_layers = [1, 2, 3]
-dropouts = [0.2, 0.3, 0.45]
+dropouts = [0.2, 0.45]
 
 for dense_layer in dense_layers:
     for layer_size in layer_sizes:
