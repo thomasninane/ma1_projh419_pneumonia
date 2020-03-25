@@ -325,13 +325,14 @@ train_sets = balance_train_set(train_sets)
 
 
 input_shape = input_shape()
-# model = create_model(input_shape)
 
-train_datagen = ImageDataGenerator(rescale=1. / 255,
-                                   shear_range=0.2,
-                                   zoom_range=0.2,
-                                   horizontal_flip=True
-                                   )
+# train_datagen = ImageDataGenerator(rescale=1. / 255,
+#                                    shear_range=0.2,
+#                                    zoom_range=0.2,
+#                                    horizontal_flip=True
+#                                    )
+
+train_datagen = ImageDataGenerator(rescale=1. / 255)
 
 test_datagen = ImageDataGenerator(rescale=1. / 255)
 
@@ -388,5 +389,62 @@ plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
 plt.savefig(PLOT_DIR + NAME + "/val_acc.png")
+
+# GENERATING PLOTS (MEAN)
+
+
+def calculate_mean(h, string):
+    res = np.zeros(EPOCHS)
+    temp = dict()
+    for i in range(len(h)):
+        temp[i] = h[i].history[string]
+        
+    for i in range(K):
+        for j in range(EPOCHS):
+            res[j] = res[j] + temp[i][j]
+    res = res/K
+    
+    return res
+
+
+# PLOT MEAN LOSS
+mean_train_loss = calculate_mean(H, "loss")
+mean_val_loss = calculate_mean(H, "val_loss")
+
+plt.figure()
+
+plt.plot(np.arange(0, N), mean_train_loss, label="train_loss_mean")
+plt.plot(np.arange(0, N), mean_val_loss, label="val_loss_mean")
+
+plt.title("Training/Validation Loss on pneumonia dataction")
+plt.xlabel("Epoch #")
+plt.ylabel("Loss")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + NAME + "/train_val_loss_mean.png")
+
+
+# PLOT MEAN ACCURACY
+mean_train_acc = calculate_mean(H, "accuracy")
+mean_val_acc = calculate_mean(H, "val_accuracy")
+
+plt.figure()
+
+plt.plot(np.arange(0, N), mean_train_acc, label="train_acc_mean")
+plt.plot(np.arange(0, N), mean_val_acc, label="val_acc_mean")
+
+plt.title("Training/Validation Accuracy on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Accuracy")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + NAME + "/train_val_acc_mean.png")
+
+# SAVE MEAN VALUES AS CSV
+
+df_mean = pd.DataFrame()
+df_mean['train_loss_mean'] = mean_train_loss
+df_mean['val_loss_mean'] = mean_val_loss
+df_mean['train_acc_mean'] = mean_train_acc
+df_mean['val_acc_mean'] = mean_val_acc
+export_csv = df_mean.to_csv(PLOT_DIR + NAME + '/mean_df.csv')
 
 print("FINISHED")
