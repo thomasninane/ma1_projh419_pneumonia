@@ -44,7 +44,7 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'under'  # no, weights, over, under
+BALANCE_TYPE = 'weights'  # no, weights, over, under
 K = 5
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')

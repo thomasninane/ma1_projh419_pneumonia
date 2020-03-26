@@ -23,6 +23,8 @@ MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
 LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 DATAVIZ_DIR = '../../OneDrive/Temp/projh419_data/dataviz/'
 
+MODEL_NAME = '2020-03-26_06-59_no_w150_h150_e20_CV'
+
 
 EPOCHS = 20
 BATCH_SIZE = 16
@@ -43,5 +45,5 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 import sys, os
 print(os.listdir())
 
-df = pd.read_csv(DATAVIZ_DIR + 'dataviz.csv')
+df = pd.read_csv(PLOT_DIR + 'dataviz.csv')
 print(df.head(10))
