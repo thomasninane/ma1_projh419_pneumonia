@@ -28,8 +28,6 @@ MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
 LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 DATAVIZ_DIR = '../../OneDrive/Temp/projh419_data/dataviz/'
 
-MODEL_NAME = '2020-03-26_06-59_no_w150_h150_e20_CV'
-
 
 EPOCHS = 20
 BATCH_SIZE = 16
@@ -46,41 +44,44 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 ##############################################################################
 #DATAFRAME
 ##############################################################################
+MODEL_NAME = '2020-03-26_09-00_weights_w150_h150_e20_CV'
 
-import sys, os
-print(os.listdir())
+matplotlib.use("Agg")
+plt.style.use("ggplot")
 
 df = pd.read_csv(PLOT_DIR + MODEL_NAME + '/mean_df.csv')
 print(df.head(10))
 
 N = EPOCHS
+x = np.arange(0, N)
 
+train_loss_mean = df['train_loss_mean']
+val_loss_mean = df['val_loss_mean']
 train_acc_mean = df['train_acc_mean']
 val_acc_mean = df['val_acc_mean']
 
 plt.figure()
-x = np.arange(0, N)
+plt.plot(x, train_loss_mean, label="train_loss_mean")
+plt.plot(x, val_loss_mean, label="val_loss_mean")
+
 plt.xticks(x)
 plt.grid(True)
+plt.title("Training/Validation Loss on pneumonia dataction")
+plt.xlabel("Epoch #")
+plt.ylabel("Loss")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + MODEL_NAME + "/train_val_loss_mean.png")
 
+# PLOT MEAN ACCURACY
+
+plt.figure()
 plt.plot(x, train_acc_mean, label="train_acc_mean")
 plt.plot(x, val_acc_mean, label="val_acc_mean")
 
+plt.xticks(x)
+plt.grid(True)
 plt.title("Training/Validation Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
-plt.savefig(PLOT_DIR + MODEL_NAME + "/test.png")
-
-
-# import torch
-# from torch.utils.tensorboard import SummaryWriter
-# import numpy as np
-#
-# writer = SummaryWriter()
-#
-# for n_iter in range(100):
-#     writer.add_scalar('Loss/train', np.random.random(), n_iter)
-#     writer.add_scalar('Loss/test', np.random.random(), n_iter)
-#     writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
-#     writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
+plt.savefig(PLOT_DIR + MODEL_NAME + "/train_val_acc_mean.png")
