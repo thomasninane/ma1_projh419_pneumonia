@@ -6,6 +6,11 @@
 import os
 import numpy as np
 import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+
+import tensorflow as tf
+from tensorflow.keras.callbacks import TensorBoard
 
 ##############################################################################
 #PARAMETERS
@@ -45,5 +50,37 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 import sys, os
 print(os.listdir())
 
-df = pd.read_csv(PLOT_DIR + 'dataviz.csv')
+df = pd.read_csv(PLOT_DIR + MODEL_NAME + '/mean_df.csv')
 print(df.head(10))
+
+N = EPOCHS
+
+train_acc_mean = df['train_acc_mean']
+val_acc_mean = df['val_acc_mean']
+
+plt.figure()
+x = np.arange(0, N)
+plt.xticks(x)
+plt.grid(True)
+
+plt.plot(x, train_acc_mean, label="train_acc_mean")
+plt.plot(x, val_acc_mean, label="val_acc_mean")
+
+plt.title("Training/Validation Accuracy on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Accuracy")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + MODEL_NAME + "/test.png")
+
+
+# import torch
+# from torch.utils.tensorboard import SummaryWriter
+# import numpy as np
+#
+# writer = SummaryWriter()
+#
+# for n_iter in range(100):
+#     writer.add_scalar('Loss/train', np.random.random(), n_iter)
+#     writer.add_scalar('Loss/test', np.random.random(), n_iter)
+#     writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
+#     writer.add_scalar('Accuracy/test', np.random.random(), n_iter)

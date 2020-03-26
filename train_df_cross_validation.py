@@ -353,10 +353,14 @@ matplotlib.use("Agg")
 plt.style.use("ggplot")
 
 N = EPOCHS
+x = np.arange(0, N)
 
 plt.figure()
 for i in range(len(H)):
-    plt.plot(np.arange(0, N), H[i].history["loss"], label="train_loss for run " + str(i))
+    plt.plot(x, H[i].history["loss"], label="train_loss for run " + str(i))
+
+plt.xticks(x)
+plt.grid(True)
 plt.title("Training Loss on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
@@ -365,7 +369,10 @@ plt.savefig(PLOT_DIR + NAME + "/train_loss.png")
 
 plt.figure()
 for i in range(len(H)):
-    plt.plot(np.arange(0, N), H[i].history["val_loss"], label="val_loss for run " + str(i))
+    plt.plot(x, H[i].history["val_loss"], label="val_loss for run " + str(i))
+
+plt.xticks(x)
+plt.grid(True)
 plt.title("Validation Loss on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
@@ -374,7 +381,10 @@ plt.savefig(PLOT_DIR + NAME + "/val_loss.png")
 
 plt.figure()
 for i in range(len(H)):
-    plt.plot(np.arange(0, N), H[i].history["accuracy"], label="train_acc for run " + str(i))
+    plt.plot(x, H[i].history["accuracy"], label="train_acc for run " + str(i))
+
+plt.xticks(x)
+plt.grid(True)
 plt.title("Training Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
@@ -383,7 +393,10 @@ plt.savefig(PLOT_DIR + NAME + "/train_acc.png")
 
 plt.figure()
 for i in range(len(H)):
-    plt.plot(np.arange(0, N), H[i].history["val_accuracy"], label="val_acc for run " + str(i))
+    plt.plot(x, H[i].history["val_accuracy"], label="val_acc for run " + str(i))
+
+plt.xticks(x)
+plt.grid(True)
 plt.title("Validation Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
@@ -408,30 +421,32 @@ def calculate_mean(h, string):
 
 
 # PLOT MEAN LOSS
-mean_train_loss = calculate_mean(H, "loss")
-mean_val_loss = calculate_mean(H, "val_loss")
+
+train_loss_mean = calculate_mean(H, "loss")
+val_loss_mean = calculate_mean(H, "val_loss")
+train_acc_mean = calculate_mean(H, "accuracy")
+val_acc_mean = calculate_mean(H, "val_accuracy")
 
 plt.figure()
+plt.plot(x, train_loss_mean, label="train_loss_mean")
+plt.plot(x, val_loss_mean, label="val_loss_mean")
 
-plt.plot(np.arange(0, N), mean_train_loss, label="train_loss_mean")
-plt.plot(np.arange(0, N), mean_val_loss, label="val_loss_mean")
-
+plt.xticks(x)
+plt.grid(True)
 plt.title("Training/Validation Loss on pneumonia dataction")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
 plt.legend(loc="best")
 plt.savefig(PLOT_DIR + NAME + "/train_val_loss_mean.png")
 
-
 # PLOT MEAN ACCURACY
-mean_train_acc = calculate_mean(H, "accuracy")
-mean_val_acc = calculate_mean(H, "val_accuracy")
 
 plt.figure()
+plt.plot(x, train_acc_mean, label="train_acc_mean")
+plt.plot(x, val_acc_mean, label="val_acc_mean")
 
-plt.plot(np.arange(0, N), mean_train_acc, label="train_acc_mean")
-plt.plot(np.arange(0, N), mean_val_acc, label="val_acc_mean")
-
+plt.xticks(x)
+plt.grid(True)
 plt.title("Training/Validation Accuracy on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
@@ -441,10 +456,10 @@ plt.savefig(PLOT_DIR + NAME + "/train_val_acc_mean.png")
 # SAVE MEAN VALUES AS CSV
 
 df_mean = pd.DataFrame()
-df_mean['train_loss_mean'] = mean_train_loss
-df_mean['val_loss_mean'] = mean_val_loss
-df_mean['train_acc_mean'] = mean_train_acc
-df_mean['val_acc_mean'] = mean_val_acc
+df_mean['train_loss_mean'] = train_loss_mean
+df_mean['val_loss_mean'] = val_loss_mean
+df_mean['train_acc_mean'] = train_acc_mean
+df_mean['val_acc_mean'] = val_acc_mean
 export_csv = df_mean.to_csv(PLOT_DIR + NAME + '/mean_df.csv')
 
 print("FINISHED")
