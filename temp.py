@@ -42,63 +42,39 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 
 
 ##############################################################################
-#DATAFRAME
-##############################################################################
-MODEL_NAME = '2020-03-26_15-43_weights_w150_h150_e20_idg_CV'
 
-matplotlib.use("Agg")
-plt.style.use("ggplot")
+def plotHistogram(x, y, title, xlabel, ylabel, width):
+    plt.figure()
+    plt.bar(x, y, width)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
 
-df = pd.read_csv(PLOT_DIR + MODEL_NAME + '/mean_df.csv')
-print(df.head(10))
+    plt.savefig(DATAVIZ_DIR + title + ".png")
+    return 0
 
-N = EPOCHS
-x = np.arange(0, N)
+# categories = ("NORMAL", "PNEUMONIA", "NORMAL (over)", "PNEUMONIA (over)", "NORMAL (under)", "PNEUMONIA (under)")
+# ylabel = "Number of observations"
+# y = [1073, 3100, 3100, 3100, 1073, 1073]
+# plt.figure()
+# plt.bar(categories, y)
+# plt.savefig(DATAVIZ_DIR + 'test.png')
 
-train_loss_mean = df['train_loss_mean']
-val_loss_mean = df['val_loss_mean']
-train_acc_mean = df['train_acc_mean']
-val_acc_mean = df['val_acc_mean']
-
-plt.figure()
-plt.plot(x, train_loss_mean, label="train_loss_mean")
-plt.plot(x, val_loss_mean, label="val_loss_mean")
-
-plt.xticks(x)
-plt.grid(True)
-plt.title("Training/Validation Loss on pneumonia dataction")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + MODEL_NAME + "/train_val_loss_mean.png")
-
-# PLOT MEAN ACCURACY
 
 plt.figure()
-plt.plot(x, train_acc_mean, label="train_acc_mean")
-plt.plot(x, val_acc_mean, label="val_acc_mean")
+plt.title("Number of images used for training the model \n (5-fold cross validation)")
+plt.ylabel("Number of observations")
 
-plt.xticks(x)
-plt.grid(True)
-plt.title("Training/Validation Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + MODEL_NAME + "/train_val_acc_mean.png")
+x1 = ('normal', 'pneumonia')
+y1 = [1073, 3100]
+plt.bar(x1, y1)
 
-# ALL
+x2 = ('normal \n (under)', 'pneumonia \n (under)')
+y2 = [1073, 1073]
+plt.bar(x2, y2)
 
-plt.figure()
-plt.plot(x, train_loss_mean, label="train_loss_mean")
-plt.plot(x, val_loss_mean, label="val_loss_mean")
-plt.plot(x, train_acc_mean, label="train_acc_mean")
-plt.plot(x, val_acc_mean, label="val_acc_mean")
+x3 = ('normal \n (over)', 'pneumonia \n (over)')
+y3 = [3100, 3100]
+plt.bar(x3, y3)
 
-plt.xticks(x)
-plt.yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-plt.grid(True)
-plt.title("Training/Validation Accuracy and Loss on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + MODEL_NAME + "/all_mean.png")
+plt.savefig(DATAVIZ_DIR + 'all_counts.png')
