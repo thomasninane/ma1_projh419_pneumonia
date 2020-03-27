@@ -44,7 +44,7 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 ##############################################################################
 #DATAFRAME
 ##############################################################################
-MODEL_NAME = '2020-03-26_09-00_weights_w150_h150_e20_CV'
+MODEL_NAME = '2020-03-26_15-43_weights_w150_h150_e20_idg_CV'
 
 matplotlib.use("Agg")
 plt.style.use("ggplot")
@@ -85,3 +85,20 @@ plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
 plt.savefig(PLOT_DIR + MODEL_NAME + "/train_val_acc_mean.png")
+
+# ALL
+
+plt.figure()
+plt.plot(x, train_loss_mean, label="train_loss_mean")
+plt.plot(x, val_loss_mean, label="val_loss_mean")
+plt.plot(x, train_acc_mean, label="train_acc_mean")
+plt.plot(x, val_acc_mean, label="val_acc_mean")
+
+plt.xticks(x)
+plt.yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+plt.grid(True)
+plt.title("Training/Validation Accuracy and Loss on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Accuracy")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + MODEL_NAME + "/all_mean.png")

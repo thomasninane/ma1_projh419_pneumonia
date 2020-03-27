@@ -38,17 +38,21 @@ PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
 MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
 LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 
-EPOCHS = 20
+EPOCHS = 25
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'weights'  # no, weights, over, under
+BALANCE_TYPE = 'no'  # no, weights, over, under
+da = False
 K = 5
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
-NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
+if da:
+    NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_da_CV'
+else:
+    NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
 
 
 ##############################################################################
@@ -326,21 +330,25 @@ train_sets = balance_train_set(train_sets)
 
 input_shape = input_shape()
 
-# train_datagen = ImageDataGenerator(rescale=1. / 255,
-#                                    shear_range=0.2,
-#                                    zoom_range=0.2,
-#                                    horizontal_flip=True
-#                                    )
-
-train_datagen = ImageDataGenerator(rescale=1. / 255)
+if da:
+    train_datagen = ImageDataGenerator(rescale=1. / 255,
+                                       brightness_range=[0.8, 1.2],
+                                       rotation_range=10,
+                                       shear_range=0.2,
+                                       zoom_range=0.2,
+                                       horizontal_flip=False,
+                                       vertical_flip=False,
+                                       )
+else:
+    train_datagen = ImageDataGenerator(rescale=1. / 255)
 
 test_datagen = ImageDataGenerator(rescale=1. / 255)
 
 H = train_model(input_shape, val_sets, train_sets)
 
-# ###############################################################################
-# #GENERATING PLOTS
-# ###############################################################################
+###############################################################################
+# GENERATING PLOTS
+###############################################################################
 
 
 print("Generating plots")
@@ -403,6 +411,7 @@ plt.ylabel("Accuracy")
 plt.legend(loc="best")
 plt.savefig(PLOT_DIR + NAME + "/val_acc.png")
 
+
 # GENERATING PLOTS (MEAN)
 
 
@@ -411,12 +420,12 @@ def calculate_mean(h, string):
     temp = dict()
     for i in range(len(h)):
         temp[i] = h[i].history[string]
-        
+
     for i in range(K):
         for j in range(EPOCHS):
             res[j] = res[j] + temp[i][j]
-    res = res/K
-    
+    res = res / K
+
     return res
 
 
@@ -453,7 +462,26 @@ plt.ylabel("Accuracy")
 plt.legend(loc="best")
 plt.savefig(PLOT_DIR + NAME + "/train_val_acc_mean.png")
 
+# ALL
+
+plt.figure()
+plt.plot(x, train_loss_mean, label="train_loss_mean")
+plt.plot(x, val_loss_mean, label="val_loss_mean")
+plt.plot(x, train_acc_mean, label="train_acc_mean")
+plt.plot(x, val_acc_mean, label="val_acc_mean")
+
+plt.xticks(x)
+plt.yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+plt.grid(True)
+plt.title("Training/Validation Accuracy and Loss on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Accuracy")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + NAME + "/all_mean.png")
+
+###############################################################################
 # SAVE MEAN VALUES AS CSV
+###############################################################################
 
 df_mean = pd.DataFrame()
 df_mean['train_loss_mean'] = train_loss_mean
