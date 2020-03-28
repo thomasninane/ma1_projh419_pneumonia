@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from datetime import datetime
 
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.models import Sequential
@@ -22,6 +22,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
 
 from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split
+from keras.optimizers import rmsprop
 
 ##############################################################################
 # PARAMETERS
@@ -44,8 +45,8 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'no'  # no, weights, over, under
-da = False
+BALANCE_TYPE = 'weights'  # no, weights, over, under
+da = True
 K = 5
 
 date = datetime.today().strftime('%Y-%m-%d_%H-%M')
@@ -89,6 +90,11 @@ def create_model(img_shape):
                   optimizer='rmsprop',
                   metrics=['accuracy']
                   )
+
+    print("LR: ", model.optimizer.lr)
+
+    model.optimizer.lr = 1e-06
+    print("LR: ", model.optimizer.lr)
 
     return model
 
@@ -250,6 +256,9 @@ def train_model(img_shape, val_dict, train_dict):
         checkpoint_dir = os.path.dirname(checkpoint_path)
         cp_callback = ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=1)
 
+        # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+        #                               patience=4, min_lr=0.0001)
+
         train_generator = train_datagen.flow_from_dataframe(dataframe=train_dict[i],
                                                             directory=IMG_DIR_DF + 'train/',
                                                             x_col='filename',
@@ -279,7 +288,7 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback],
+                          callbacks=[tensorboard, cp_callback], #, reduce_lr
                           class_weight=class_weights
                           )
 
@@ -289,10 +298,11 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback]
+                          callbacks=[tensorboard, cp_callback] #, reduce_lr
                           )
 
         history[i] = H
+        print("LR: ", model.optimizer.lr)
         del model
         tf.keras.backend.clear_session()
         gc.collect()
