@@ -3,14 +3,10 @@
 ##############################################################################
 
 
-import os
 import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-
-import tensorflow as tf
-from tensorflow.keras.callbacks import TensorBoard
 
 ##############################################################################
 #PARAMETERS
@@ -43,38 +39,52 @@ NAME = '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(
 
 ##############################################################################
 
-def plotHistogram(x, y, title, xlabel, ylabel, width):
-    plt.figure()
-    plt.bar(x, y, width)
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+matplotlib.use("Agg")
+plt.style.use("ggplot")
 
-    plt.savefig(DATAVIZ_DIR + title + ".png")
-    return 0
+N = 25
+x = np.arange(0, N)
 
-# categories = ("NORMAL", "PNEUMONIA", "NORMAL (over)", "PNEUMONIA (over)", "NORMAL (under)", "PNEUMONIA (under)")
-# ylabel = "Number of observations"
-# y = [1073, 3100, 3100, 3100, 1073, 1073]
-# plt.figure()
-# plt.bar(categories, y)
-# plt.savefig(DATAVIZ_DIR + 'test.png')
+NAME = '2020-03-28_17-04_weights_w150_h150_e25_da_CV'
+df = pd.read_csv(PLOT_DIR + NAME + '/mean_df.csv')
 
+train_loss_mean = df['train_loss_mean']
+val_loss_mean = df['val_loss_mean']
+train_acc_mean = df['train_acc_mean']
+val_acc_mean = df['val_acc_mean']
 
 plt.figure()
-plt.title("Number of images used for training the model \n (5-fold cross validation)")
-plt.ylabel("Number of observations")
+plt.plot(x, train_loss_mean, label="train_loss_mean")
+plt.plot(x, val_loss_mean, label="val_loss_mean")
+plt.plot(x, train_acc_mean, label="train_acc_mean")
+plt.plot(x, val_acc_mean, label="val_acc_mean")
 
-x1 = ('normal', 'pneumonia')
-y1 = [1073, 3100]
-plt.bar(x1, y1)
+plt.xticks(x)
+plt.yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+plt.grid(True)
+plt.title("Training/Validation Accuracy and Loss \n on pneumonia detection")
+plt.xlabel("Epoch #")
+plt.ylabel("Accuracy")
+plt.legend(loc="best")
+plt.savefig(PLOT_DIR + NAME + "/all_mean.png")
 
-x2 = ('normal \n (under)', 'pneumonia \n (under)')
-y2 = [1073, 1073]
-plt.bar(x2, y2)
-
-x3 = ('normal \n (over)', 'pneumonia \n (over)')
-y3 = [3100, 3100]
-plt.bar(x3, y3)
-
-plt.savefig(DATAVIZ_DIR + 'all_counts.png')
+# df = pd.read_csv(DATAVIZ_DIR + 'dataviz.csv')
+# df = df.iloc[:, 1:]
+# print(df.head(10))
+#
+# def append(column):
+#     res = column.to_numpy()
+#     res = res[1:]
+#     return res
+#
+# res = pd.DataFrame()
+# res['Set'] = ['Test', 'Test', 'Train', 'Train', 'Val', 'Val']
+# res['Disease'] = ['Normal', 'Pneumonia', 'Normal', 'Pneumonia', 'Normal', 'Pneumonia']
+# res['# of samples'] = append(df['samples #'])
+# res['Max WIDTH'] = append(df['max_width'])
+# res['Min WIDTH'] = append(df['min_width'])
+# res['Max HEIGHT'] = append(df['max_height'])
+# res['Min HEIGHT'] = append(df['min_height'])
+#
+#
+# print(res.head())
