@@ -36,7 +36,7 @@ IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
-EPOCHS = 2
+EPOCHS = 25
 BATCH_SIZE = 16
 
 WIDTH = 150
@@ -442,6 +442,7 @@ def plot_mean(title, y_label, save_name, data_1, data_2, label_1, label_2):
     plt.plot(X, data_2, label=label_2)
 
     plt.xticks(X)
+    plt.yticks(Y)
     plt.grid(True)
     plt.title("Training/Validation " + title + " \n on pneumonia detection")
     plt.xlabel("Epoch #")
@@ -476,7 +477,7 @@ plt.title("Training/Validation Accuracy and Loss \n on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/all_mean.png")
+plt.savefig(PLOT_DIR + "all_mean.png")
 
 ###############################################################################
 # SAVE MEAN VALUES AS CSV
@@ -487,7 +488,7 @@ df_mean['train_loss_mean'] = train_loss_mean
 df_mean['val_loss_mean'] = val_loss_mean
 df_mean['train_acc_mean'] = train_acc_mean
 df_mean['val_acc_mean'] = val_acc_mean
-export_csv = df_mean.to_csv(PLOT_DIR + NAME + '/mean_df.csv')
+export_csv = df_mean.to_csv(DATA_DIR + 'mean_df.csv')
 
 
 ###############################################################################
@@ -501,7 +502,6 @@ def calculate_mean_metric(metric_name, class_number):
     for i in range(K):
         df = pd.read_csv(DATA_DIR + "r" + str(i + 1) + "/metrics.csv")
         df_dict[i] = df[metric_name + "_" + str(class_number)].to_numpy()
-        print(df_dict[i])
 
     for j in range(len(df_dict)):
         for k in range(len(df_dict[j])):

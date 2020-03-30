@@ -36,7 +36,7 @@ IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
-EPOCHS = 2
+EPOCHS = 5
 BATCH_SIZE = 16
 
 WIDTH = 150
@@ -205,7 +205,6 @@ def train_model(img_shape, val_df, train_df):
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                   patience=4, min_lr=1e-7)
 
-    metrics_train = PrecisionRecallF1scoreMetrics(train_generator, model)
     metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
 
     if BALANCE_TYPE == 'weights':

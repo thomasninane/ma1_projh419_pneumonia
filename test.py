@@ -1,5 +1,5 @@
 ##############################################################################
-#IMPORTS
+# IMPORTS
 ##############################################################################
 
 
@@ -25,9 +25,8 @@ from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-
 ##############################################################################
-#PARAMETERS
+# PARAMETERS
 ##############################################################################
 
 
@@ -39,43 +38,52 @@ IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
 
-
 EPOCHS = 20
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
-NAME = '2020-03-25_20-56_under_w150_h150_e20_CV'
-RUN = 'r1'
+NAME = '2020-03-30_22-10_no_w150_h150_e5_da'
+RUN = 'r5'
+
+NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+DATA_DIR = NAME_DIR + 'data\\'
+LOG_DIR = NAME_DIR + 'logs\\'
+MODEL_DIR = NAME_DIR + 'models\\'
+PLOT_DIR = NAME_DIR + 'plots\\'
 
 
 ##############################################################################
-#FUNCTIONS
+# FUNCTIONS
 ##############################################################################
 
 
-def createModel(inputShape):
+def create_model(img_shape):
     model = Sequential()
-    model.add(Conv2D(32, (3, 3), input_shape=inputShape))
+
+    model.add(Conv2D(32, (3, 3), input_shape=img_shape))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    
+
     model.add(Conv2D(32, (3, 3)))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    
+
     model.add(Conv2D(64, (3, 3)))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    
+
     model.add(Flatten())
+
     model.add(Dense(64))
     model.add(Activation('relu'))
+
     model.add(Dropout(0.5))
+
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
-    
+
     model.compile(loss='binary_crossentropy',
                   optimizer='rmsprop',
                   metrics=['accuracy']
@@ -83,29 +91,29 @@ def createModel(inputShape):
     return model
 
 
-def inputShape():
+def input_shape():
     if tf.keras.backend.image_data_format() == 'channels_first':
-        input_shape = (3, WIDTH, HEIGHT)
+        res = (3, WIDTH, HEIGHT)
     else:
-        input_shape = (WIDTH, HEIGHT, 3)
-    return input_shape
+        res = (WIDTH, HEIGHT, 3)
+    return res
 
 
-def mergeAndShuffle(df0, df1):
-    '''merges two dataframes and shuffles the merged dataframe'''
+def merge_and_shuffle(df0, df1):
+    """merges two dataframes and shuffles the merged dataframe"""
     df = df0
     df = df.append(df1, ignore_index=True)
-    
-    df = df.sample(frac=1)  #Shuffle
+
+    df = df.sample(frac=1)  # Shuffle
     df = df.reset_index(drop="True")
-    
+
     return df
 
 
 def predictions(ls):
     res_binary = []
     res_string = []
-    
+
     for element in ls:
         if element >= 0.5:
             res_binary.append(1)
@@ -113,19 +121,21 @@ def predictions(ls):
         else:
             res_binary.append(0)
             res_string.append('NORMAL')
-    
+
     return res_binary, res_string
 
-def getCheckpointPath(word):
+
+def get_checkpoint_path(word):
     if word in NAME:
-        res =  MODEL_DIR + NAME + "/" + RUN + "/cp.ckpt"
+        res = MODEL_DIR + RUN + "\\cp.ckpt"
     else:
-        res =  MODEL_DIR + NAME + "/cp.ckpt"
+        res = MODEL_DIR + "cp.ckpt"
     print('Checkpoint Path: ', res, "\n")
     return res
 
+
 ##############################################################################
-#DATAFRAME HANDLING
+# DATAFRAME HANDLING
 ##############################################################################
 
 df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv')
@@ -133,43 +143,38 @@ df_test_n = df_test_n[['filename', 'normal/pneumonia']]
 print('Test Normal DF')
 print(df_test_n.head(), "\n")
 
-
 df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv')
 df_test_p = df_test_p[['filename', 'normal/pneumonia']]
 print('Test Pneumonia DF')
 print(df_test_p.head(), "\n")
 
-
-#df = pd.concat([df_test_n, df_test_p], ignore_index=True)
-df = mergeAndShuffle(df_test_n, df_test_p)
+# df = pd.concat([df_test_n, df_test_p], ignore_index=True)
+df = merge_and_shuffle(df_test_n, df_test_p)
 print('Test Combined DF')
 print(df.head(), "\n")
-
 
 ##############################################################################
 #
 ##############################################################################
 
 
-test_datagen = ImageDataGenerator(rescale = 1./255)
+test_datagen = ImageDataGenerator(rescale=1. / 255)
 
-test_generator = test_datagen.flow_from_dataframe(dataframe = df,
-                                                  directory = IMG_DIR_DF + 'test/',
-                                                  x_col = 'filename',
-                                                  y_col = 'normal/pneumonia',
-                                                  class_mode = 'binary',
-                                                  batch_size = BATCH_SIZE,
-                                                  target_size = (WIDTH, HEIGHT),
+test_generator = test_datagen.flow_from_dataframe(dataframe=df,
+                                                  directory=IMG_DIR_DF + 'test/',
+                                                  x_col='filename',
+                                                  y_col='normal/pneumonia',
+                                                  class_mode='binary',
+                                                  batch_size=BATCH_SIZE,
+                                                  target_size=(WIDTH, HEIGHT),
                                                   shuffle=False
                                                   )
 
-input_shape = inputShape()
-model = createModel(input_shape)
+input_shape = input_shape()
+model = create_model(input_shape)
 
-
-checkpoint_path = getCheckpointPath('CV')
+checkpoint_path = get_checkpoint_path('CV')
 model.load_weights(checkpoint_path)
-
 
 ##############################################################################
 #
@@ -177,20 +182,22 @@ model.load_weights(checkpoint_path)
 
 
 scores = model.evaluate(test_generator)
-print('Scores: ' + str(scores[1]*100))
+print('Scores: ' + str(scores[1] * 100))
 
 Y_pred = model.predict(test_generator)
 df['predicted (probability)'] = Y_pred
-
 
 y_pred, y_pred_str = predictions(Y_pred)
 df['predicted (string)'] = y_pred_str
 print(df.head())
 
+# CONFUSION MATRIX
+print('CONFUSION MATRIX')
+cm = confusion_matrix(test_generator.classes, y_pred)
+print(cm)
 
-print('Confusion Matrix')
-print(confusion_matrix(test_generator.classes, y_pred))
-print('Classification Report')
-TARGET_NAMES = ['Normal', 'Pneumonia']  #0: normal 1: pneumonia
+# CLASSIFICATION REPORT
+print('CLASSIFICATION REPORT')
+TARGET_NAMES = ['Normal', 'Pneumonia']  # 0: normal 1: pneumonia
 cr = classification_report(test_generator.classes, y_pred, target_names=TARGET_NAMES)
 print(cr)
