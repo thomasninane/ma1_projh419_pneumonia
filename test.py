@@ -46,7 +46,7 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-NAME = '2020-03-19_23-44_over_w150_h150_e20_CV'
+NAME = '2020-03-25_20-56_under_w150_h150_e20_CV'
 RUN = 'r1'
 
 
@@ -176,7 +176,7 @@ model.load_weights(checkpoint_path)
 ##############################################################################
 
 
-scores = model.evaluate_generator(test_generator)
+scores = model.evaluate(test_generator)
 print('Scores: ' + str(scores[1]*100))
 
 Y_pred = model.predict(test_generator)
@@ -192,4 +192,5 @@ print('Confusion Matrix')
 print(confusion_matrix(test_generator.classes, y_pred))
 print('Classification Report')
 TARGET_NAMES = ['Normal', 'Pneumonia']  #0: normal 1: pneumonia
-print(classification_report(test_generator.classes, y_pred, target_names=TARGET_NAMES))
+cr = classification_report(test_generator.classes, y_pred, target_names=TARGET_NAMES)
+print(cr)

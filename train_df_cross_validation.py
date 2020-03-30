@@ -18,11 +18,12 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnP
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split
-from keras.optimizers import rmsprop
+
+from metrics import *
 
 ##############################################################################
 # PARAMETERS
@@ -33,19 +34,15 @@ pd.set_option('display.expand_frame_repr', False)
 
 IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
-PLOT_DIR = '../../OneDrive/Temp/projh419_data/plots/'
-MODEL_DIR = '../../OneDrive/Temp/projh419_data/models/'
-LOG_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\logs\\'
 
-EPOCHS = 25
+EPOCHS = 2
 BATCH_SIZE = 16
 
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'weights'  # no, weights, over, under
+BALANCE_TYPE = 'no'  # no, weights, over, under
 da = True
 K = 5
 
@@ -54,6 +51,12 @@ if da:
     NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_da_CV'
 else:
     NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
+
+NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+DATA_DIR = NAME_DIR + 'data\\'
+LOG_DIR = NAME_DIR + 'logs\\'
+MODEL_DIR = NAME_DIR + 'models\\'
+PLOT_DIR = NAME_DIR + 'plots\\'
 
 
 ##############################################################################
@@ -93,8 +96,8 @@ def create_model(img_shape):
 
     print("LR: ", model.optimizer.lr)
 
-    model.optimizer.lr = 1e-06
-    print("LR: ", model.optimizer.lr)
+    # model.optimizer.lr = 1e-06
+    # print("LR: ", model.optimizer.lr)
 
     return model
 
@@ -121,26 +124,26 @@ def balance_train_set(ls):
         df_p = df[df['normal/pneumonia'] == 'PNEUMONIA']
 
         '''we can now apply balance_classes() to the two dataframes'''
-        train_subset_balanced = balance_classes(BALANCE_TYPE, df_n, df_p, i + 1)
+        train_subset_balanced = balance_classes(df_n, df_p, i + 1)
         res[i] = train_subset_balanced
 
     return res
 
 
-def balance_classes(balance_type, df0, df1, subset_number):
+def balance_classes(df0, df1, subset_number):
     print("\n", "SUBSET NUMBER:", subset_number)
 
     print("Len of train_normal (unbalanced): ", df0.shape[0])
     print("Len of train_pneumonia (unbalanced): ", df1.shape[0])
 
-    if (balance_type == 'no') or (balance_type == 'weights'):
+    if (BALANCE_TYPE == 'no') or (BALANCE_TYPE == 'weights'):
         df = merge_and_shuffle(df0, df1)
         return df
 
     else:
-        if balance_type == 'under':
+        if BALANCE_TYPE == 'under':
             df0, df1 = undersample(df0, df1)
-        elif balance_type == 'over':
+        elif BALANCE_TYPE == 'over':
             df0, df1 = oversample(df0, df1)
         else:
             print('Class balancing error')
@@ -242,22 +245,19 @@ def train_model(img_shape, val_dict, train_dict):
     """trains the model for k folds and returns a dictionary containing the history of each model"""
 
     history = dict()
+    metrics = dict()
 
     for i in range(K):
         print("\n", "\n", 'RUN: ' + str(i + 1))
+        run = "r" + str(i + 1) + "\\"
 
         model = create_model(img_shape)
 
-        run = "r" + str(i + 1)
-
-        tensorboard = TensorBoard(log_dir=LOG_DIR + NAME + "\\" + run)
-
-        checkpoint_path = MODEL_DIR + NAME + "/" + run + "/cp.ckpt"
-        checkpoint_dir = os.path.dirname(checkpoint_path)
-        cp_callback = ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=1)
-
-        # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-        #                               patience=4, min_lr=0.0001)
+        '''Saving train df and val df'''
+        if not os.path.exists(DATA_DIR + run):
+            os.makedirs(DATA_DIR + run)
+        train_dict[i].to_csv(DATA_DIR + run + "train.csv")
+        val_dict[i].to_csv(DATA_DIR + run + "val.csv")
 
         train_generator = train_datagen.flow_from_dataframe(dataframe=train_dict[i],
                                                             directory=IMG_DIR_DF + 'train/',
@@ -277,6 +277,19 @@ def train_model(img_shape, val_dict, train_dict):
                                                          class_mode='binary',
                                                          )
 
+        '''CALLBACKS'''
+        tensorboard = TensorBoard(log_dir=LOG_DIR + run)
+
+        checkpoint_path = MODEL_DIR + run + "cp.ckpt"
+        checkpoint_dir = os.path.dirname(checkpoint_path)
+        cp_callback = ModelCheckpoint(filepath=checkpoint_path, save_weights_only=True, verbose=1)
+
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+                                      patience=4, min_lr=1e-7)
+
+        metrics_train = PrecisionRecallF1scoreMetrics(train_generator, model)
+        metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
+
         if BALANCE_TYPE == 'weights':
             class_weights = class_weight.compute_class_weight("balanced",
                                                               np.unique(train_generator.classes),
@@ -288,7 +301,7 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback], #, reduce_lr
+                          callbacks=[tensorboard, cp_callback, metrics_val],  # , reduce_lr
                           class_weight=class_weights
                           )
 
@@ -298,16 +311,20 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback] #, reduce_lr
+                          callbacks=[tensorboard, cp_callback, metrics_val]  # , reduce_lr
                           )
 
+        hist_df = pd.DataFrame(H.history)
+        hist_df.to_csv(DATA_DIR + run + "history.csv")
+        export_metrics(metrics_val, DATA_DIR + run)
+
         history[i] = H
-        print("LR: ", model.optimizer.lr)
+        metrics[i] = metrics_val
         del model
         tf.keras.backend.clear_session()
         gc.collect()
 
-    return history
+    return history, metrics
 
 
 ##############################################################################
@@ -354,78 +371,58 @@ else:
 
 test_datagen = ImageDataGenerator(rescale=1. / 255)
 
-H = train_model(input_shape, val_sets, train_sets)
+H, METRICS = train_model(input_shape, val_sets, train_sets)
 
 ###############################################################################
 # GENERATING PLOTS
 ###############################################################################
 
+matplotlib.use("Agg")
+plt.style.use("ggplot")
+X = np.arange(0, EPOCHS)
+Y = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
-print("Generating plots")
+
+def plot_k_curves(title, y_label, save_name, curve, label):
+    plt.figure()
+    for i in range(len(H)):
+        plt.plot(X, H[i].history[curve], label=label + " for run " + str(i))
+
+    plt.xticks(X)
+    plt.yticks(Y)
+    plt.grid(True)
+    plt.title(title + "\n on pneumonia detection")
+    plt.xlabel("Epoch #")
+    plt.ylabel(y_label)
+    plt.legend(loc="best")
+    plt.savefig(PLOT_DIR + save_name + ".png")
+    return
+
+
+print("GENERATING PLOTS")
 
 '''Making directory'''
 if not os.path.exists(PLOT_DIR + NAME):
     os.makedirs(PLOT_DIR + NAME)
 
-matplotlib.use("Agg")
-plt.style.use("ggplot")
+# Plot loss
+plot_k_curves("Training Loss", "Loss", "train_loss", "loss", "train_loss")
 
-N = EPOCHS
-x = np.arange(0, N)
+# Plot val_loss
+plot_k_curves("Validation Loss", "Loss", "val_loss", "val_loss", "val_loss")
 
-plt.figure()
-for i in range(len(H)):
-    plt.plot(x, H[i].history["loss"], label="train_loss for run " + str(i))
+# Plot acc
+plot_k_curves("Training Accuracy", "Accuracy", "train_acc", "accuracy", "train_acc")
 
-plt.xticks(x)
-plt.grid(True)
-plt.title("Training Loss on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_loss.png")
-
-plt.figure()
-for i in range(len(H)):
-    plt.plot(x, H[i].history["val_loss"], label="val_loss for run " + str(i))
-
-plt.xticks(x)
-plt.grid(True)
-plt.title("Validation Loss on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/val_loss.png")
-
-plt.figure()
-for i in range(len(H)):
-    plt.plot(x, H[i].history["accuracy"], label="train_acc for run " + str(i))
-
-plt.xticks(x)
-plt.grid(True)
-plt.title("Training Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_acc.png")
-
-plt.figure()
-for i in range(len(H)):
-    plt.plot(x, H[i].history["val_accuracy"], label="val_acc for run " + str(i))
-
-plt.xticks(x)
-plt.grid(True)
-plt.title("Validation Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/val_acc.png")
+# Plot val_acc
+plot_k_curves("Validation Accuracy", "Accuracy", "val_acc", "val_accuracy", "val_acc")
 
 
+###############################################################################
 # GENERATING PLOTS (MEAN)
+###############################################################################
 
-
-def calculate_mean(h, string):
+def calculate_mean_history(h, string):
     res = np.zeros(EPOCHS)
     temp = dict()
     for i in range(len(h)):
@@ -439,51 +436,43 @@ def calculate_mean(h, string):
     return res
 
 
-# PLOT MEAN LOSS
+def plot_mean(title, y_label, save_name, data_1, data_2, label_1, label_2):
+    plt.figure()
+    plt.plot(X, data_1, label=label_1)
+    plt.plot(X, data_2, label=label_2)
 
-train_loss_mean = calculate_mean(H, "loss")
-val_loss_mean = calculate_mean(H, "val_loss")
-train_acc_mean = calculate_mean(H, "accuracy")
-val_acc_mean = calculate_mean(H, "val_accuracy")
+    plt.xticks(X)
+    plt.grid(True)
+    plt.title("Training/Validation " + title + " \n on pneumonia detection")
+    plt.xlabel("Epoch #")
+    plt.ylabel(y_label)
+    plt.legend(loc="best")
+    plt.savefig(PLOT_DIR + save_name + ".png")
+    return
 
+
+train_loss_mean = calculate_mean_history(H, "loss")
+val_loss_mean = calculate_mean_history(H, "val_loss")
+train_acc_mean = calculate_mean_history(H, "accuracy")
+val_acc_mean = calculate_mean_history(H, "val_accuracy")
+
+# Plot train_loss_mean and val_loss_mean
+plot_mean("Loss", "Loss", "loss_mean", train_loss_mean, val_loss_mean, "train_loss_mean", "val_loss_mean")
+
+# Plot train_acc_mean and val_acc_mean
+plot_mean("Accuracy", "Accuracy", "acc_mean", train_acc_mean, val_acc_mean, "train_acc_mean", "val_acc_mean")
+
+# Plot all on the same curve
 plt.figure()
-plt.plot(x, train_loss_mean, label="train_loss_mean")
-plt.plot(x, val_loss_mean, label="val_loss_mean")
+plt.plot(X, train_loss_mean, label="train_loss_mean")
+plt.plot(X, val_loss_mean, label="val_loss_mean")
+plt.plot(X, train_acc_mean, label="train_acc_mean")
+plt.plot(X, val_acc_mean, label="val_acc_mean")
 
-plt.xticks(x)
+plt.xticks(X)
+plt.yticks(Y)
 plt.grid(True)
-plt.title("Training/Validation Loss on pneumonia dataction")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_val_loss_mean.png")
-
-# PLOT MEAN ACCURACY
-
-plt.figure()
-plt.plot(x, train_acc_mean, label="train_acc_mean")
-plt.plot(x, val_acc_mean, label="val_acc_mean")
-
-plt.xticks(x)
-plt.grid(True)
-plt.title("Training/Validation Accuracy on pneumonia detection")
-plt.xlabel("Epoch #")
-plt.ylabel("Accuracy")
-plt.legend(loc="best")
-plt.savefig(PLOT_DIR + NAME + "/train_val_acc_mean.png")
-
-# ALL
-
-plt.figure()
-plt.plot(x, train_loss_mean, label="train_loss_mean")
-plt.plot(x, val_loss_mean, label="val_loss_mean")
-plt.plot(x, train_acc_mean, label="train_acc_mean")
-plt.plot(x, val_acc_mean, label="val_acc_mean")
-
-plt.xticks(x)
-plt.yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-plt.grid(True)
-plt.title("Training/Validation Accuracy and Loss on pneumonia detection")
+plt.title("Training/Validation Accuracy and Loss \n on pneumonia detection")
 plt.xlabel("Epoch #")
 plt.ylabel("Accuracy")
 plt.legend(loc="best")
@@ -499,5 +488,37 @@ df_mean['val_loss_mean'] = val_loss_mean
 df_mean['train_acc_mean'] = train_acc_mean
 df_mean['val_acc_mean'] = val_acc_mean
 export_csv = df_mean.to_csv(PLOT_DIR + NAME + '/mean_df.csv')
+
+
+###############################################################################
+# GENERATING PLOTS (METRICS)
+###############################################################################
+
+def calculate_mean_metric(metric_name, class_number):
+    res = np.zeros(EPOCHS)
+    df_dict = dict()
+
+    for i in range(K):
+        df = pd.read_csv(DATA_DIR + "r" + str(i + 1) + "/metrics.csv")
+        df_dict[i] = df[metric_name + "_" + str(class_number)].to_numpy()
+        print(df_dict[i])
+
+    for j in range(len(df_dict)):
+        for k in range(len(df_dict[j])):
+            res[k] = res[k] + df_dict[j][k]
+
+    res = res / K
+    return res
+
+
+recall_0 = calculate_mean_metric("recall", 0)
+precision_0 = calculate_mean_metric("precision", 0)
+f1_0 = calculate_mean_metric("f1", 0)
+plot_metrics_2(recall_0, precision_0, f1_0, X, PLOT_DIR, 0)
+
+recall_1 = calculate_mean_metric("recall", 1)
+precision_1 = calculate_mean_metric("precision", 1)
+f1_1 = calculate_mean_metric("f1", 1)
+plot_metrics_2(recall_1, precision_1, f1_1, X, PLOT_DIR, 1)
 
 print("FINISHED")
