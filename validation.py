@@ -2,27 +2,15 @@
 # IMPORTS
 ##############################################################################
 
-import gc
-import os
-import numpy as np
 import pandas as pd
-
-import matplotlib.pyplot as plt
-import matplotlib
 import tensorflow as tf
 
-from datetime import datetime
+from sklearn.metrics import classification_report, confusion_matrix
 
-from tensorflow.keras import backend as kB
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
-
-from sklearn.utils import class_weight
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 ##############################################################################
 # PARAMETERS
@@ -31,9 +19,8 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 pd.set_option('display.expand_frame_repr', False)
 
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
-NAME = '2020-03-30_22-10_no_w150_h150_e5_da'
+NAME = '2020-03-30_18-03_no_w150_h150_e25_da_CV'
 RUN = 'r5'
 
 BATCH_SIZE = 16
@@ -104,62 +91,37 @@ def predictions(ls):
     return res_binary, res_string
 
 
-def get_checkpoint_path(word):
+def get_checkpoint_and_csv_path(word):
     if word in NAME:
-        res = MODEL_DIR + RUN + "\\cp.ckpt"
+        checkpoint_path = MODEL_DIR + RUN + "\\cp.ckpt"
+        csv_path = DATA_DIR + RUN + '\\'
     else:
-        res = MODEL_DIR + "cp.ckpt"
-    print('Checkpoint Path: ', res, "\n")
-    return res
+        checkpoint_path = MODEL_DIR + "cp.ckpt"
+        csv_path = DATA_DIR
+    print('Checkpoint Path: ', checkpoint_path, "\n")
+    print('CSV Path: ', csv_path, "\n")
+    return checkpoint_path, csv_path
 
-
-def merge_and_shuffle(df0, df1):
-    """merges two dataframes and shuffles the merged dataframe"""
-    df = df0
-    df = df.append(df1, ignore_index=True)
-
-    df = df.sample(frac=1)  # Shuffle
-    df = df.reset_index(drop="True")
-
-    return df
-
-
-##############################################################################
-# DATAFRAME HANDLING
-##############################################################################
-
-df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv')
-df_test_n = df_test_n[['filename', 'normal/pneumonia']]
-print('Test Normal DF')
-print(df_test_n.head(), "\n")
-
-df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv')
-df_test_p = df_test_p[['filename', 'normal/pneumonia']]
-print('Test Pneumonia DF')
-print(df_test_p.head(), "\n")
-
-# df = pd.concat([df_test_n, df_test_p], ignore_index=True)
-df = merge_and_shuffle(df_test_n, df_test_p)
-print('Test Combined DF')
-print(df.head(), "\n")
 
 ##############################################################################
 #
 ##############################################################################
 
-CHECKPOINT_PATH = get_checkpoint_path('CV')
+CHECKPOINT_PATH, CSV_PATH = get_checkpoint_and_csv_path('CV')
 
-test_datagen = ImageDataGenerator(rescale=1. / 255)
+df = pd.read_csv(CSV_PATH + 'val.csv')
 
-test_generator = test_datagen.flow_from_dataframe(dataframe=df,
-                                                  directory=IMG_DIR_DF + 'test/',
-                                                  x_col='filename',
-                                                  y_col='normal/pneumonia',
-                                                  class_mode='binary',
-                                                  batch_size=BATCH_SIZE,
-                                                  target_size=(WIDTH, HEIGHT),
-                                                  shuffle=False
-                                                  )
+val_datagen = ImageDataGenerator(rescale=1. / 255)
+
+val_generator = val_datagen.flow_from_dataframe(dataframe=df,
+                                                directory=IMG_DIR_DF + 'train\\',
+                                                x_col='filename',
+                                                y_col='normal/pneumonia',
+                                                class_mode='binary',
+                                                batch_size=BATCH_SIZE,
+                                                target_size=(WIDTH, HEIGHT),
+                                                shuffle=False
+                                                )
 
 input_shape = input_shape()
 model = create_model(input_shape)
@@ -169,10 +131,10 @@ model.load_weights(CHECKPOINT_PATH)
 #
 ##############################################################################
 
-scores = model.evaluate(test_generator)
+scores = model.evaluate(val_generator)
 print('Scores: ' + str(scores[1] * 100))
 
-Y_pred = model.predict(test_generator)
+Y_pred = model.predict(val_generator)
 df['predicted (probability)'] = Y_pred
 
 y_pred, y_pred_str = predictions(Y_pred)
@@ -181,11 +143,11 @@ print(df.head())
 
 # CONFUSION MATRIX
 print('CONFUSION MATRIX')
-cm = confusion_matrix(test_generator.classes, y_pred)
+cm = confusion_matrix(val_generator.classes, y_pred)
 print(cm)
 
 # CLASSIFICATION REPORT
 print('CLASSIFICATION REPORT')
 TARGET_NAMES = ['Normal', 'Pneumonia']  # 0: normal 1: pneumonia
-cr = classification_report(test_generator.classes, y_pred, target_names=TARGET_NAMES)
+cr = classification_report(val_generator.classes, y_pred, target_names=TARGET_NAMES)
 print(cr)
