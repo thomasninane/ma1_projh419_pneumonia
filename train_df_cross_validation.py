@@ -42,7 +42,7 @@ BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-BALANCE_TYPE = 'no'  # no, weights, over, under
+BALANCE_TYPE = 'weights'  # no, weights, over, under
 da = True
 K = 5
 
@@ -287,7 +287,6 @@ def train_model(img_shape, val_dict, train_dict):
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                       patience=4, min_lr=1e-7)
 
-        metrics_train = PrecisionRecallF1scoreMetrics(train_generator, model)
         metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
 
         if BALANCE_TYPE == 'weights':
@@ -402,8 +401,8 @@ def plot_k_curves(title, y_label, save_name, curve, label):
 print("GENERATING PLOTS")
 
 '''Making directory'''
-if not os.path.exists(PLOT_DIR + NAME):
-    os.makedirs(PLOT_DIR + NAME)
+if not os.path.exists(PLOT_DIR):
+    os.makedirs(PLOT_DIR)
 
 # Plot loss
 plot_k_curves("Training Loss", "Loss", "train_loss", "loss", "train_loss")
