@@ -287,7 +287,7 @@ def train_model(img_shape, val_dict, train_dict):
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                       patience=4, min_lr=1e-7)
 
-        metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
+        # metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
 
         if BALANCE_TYPE == 'weights':
             class_weights = class_weight.compute_class_weight("balanced",
@@ -300,7 +300,7 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback, metrics_val],  # , reduce_lr
+                          callbacks=[tensorboard, cp_callback],  # , reduce_lr, metrics_val
                           class_weight=class_weights
                           )
 
@@ -310,15 +310,15 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback, metrics_val]  # , reduce_lr
+                          callbacks=[tensorboard, cp_callback]  # , reduce_lr, metrics_val
                           )
 
         hist_df = pd.DataFrame(H.history)
         hist_df.to_csv(DATA_DIR + run + "history.csv")
-        export_metrics(metrics_val, DATA_DIR + run)
+        # export_metrics(metrics_val, DATA_DIR + run)
 
         history[i] = H
-        metrics[i] = metrics_val
+        # metrics[i] = metrics_val
         del model
         tf.keras.backend.clear_session()
         gc.collect()
@@ -510,14 +510,14 @@ def calculate_mean_metric(metric_name, class_number):
     return res
 
 
-recall_0 = calculate_mean_metric("recall", 0)
-precision_0 = calculate_mean_metric("precision", 0)
-f1_0 = calculate_mean_metric("f1", 0)
-plot_metrics_2(recall_0, precision_0, f1_0, X, PLOT_DIR, 0)
-
-recall_1 = calculate_mean_metric("recall", 1)
-precision_1 = calculate_mean_metric("precision", 1)
-f1_1 = calculate_mean_metric("f1", 1)
-plot_metrics_2(recall_1, precision_1, f1_1, X, PLOT_DIR, 1)
+# recall_0 = calculate_mean_metric("recall", 0)
+# precision_0 = calculate_mean_metric("precision", 0)
+# f1_0 = calculate_mean_metric("f1", 0)
+# plot_metrics_2(recall_0, precision_0, f1_0, X, PLOT_DIR, 0)
+#
+# recall_1 = calculate_mean_metric("recall", 1)
+# precision_1 = calculate_mean_metric("precision", 1)
+# f1_1 = calculate_mean_metric("f1", 1)
+# plot_metrics_2(recall_1, precision_1, f1_1, X, PLOT_DIR, 1)
 
 print("FINISHED")

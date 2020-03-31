@@ -205,7 +205,7 @@ def train_model(img_shape, val_df, train_df):
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                   patience=4, min_lr=1e-7)
 
-    metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
+    # metrics_val = PrecisionRecallF1scoreMetrics(val_generator, model)
 
     if BALANCE_TYPE == 'weights':
         class_weights = class_weight.compute_class_weight("balanced",
@@ -218,7 +218,7 @@ def train_model(img_shape, val_df, train_df):
                       epochs=EPOCHS,
                       validation_data=val_generator,
                       validation_steps=val_generator.samples // BATCH_SIZE,
-                      callbacks=[tensorboard, cp_callback, metrics_val],  # , reduce_lr
+                      callbacks=[tensorboard, cp_callback],  # , reduce_lr, metrics_val
                       class_weight=class_weights
                       )
 
@@ -228,12 +228,13 @@ def train_model(img_shape, val_df, train_df):
                       epochs=EPOCHS,
                       validation_data=val_generator,
                       validation_steps=val_generator.samples // BATCH_SIZE,
-                      callbacks=[tensorboard, cp_callback, metrics_val]  # , reduce_lr
+                      callbacks=[tensorboard, cp_callback]  # , reduce_lr, metrics_val
                       )
 
     hist_df = pd.DataFrame(H.history)
     hist_df.to_csv(DATA_DIR + "history.csv")
-    export_metrics(metrics_val, DATA_DIR)
+    # export_metrics(metrics_val, DATA_DIR)
+    metrics_val = 0
 
     return H, metrics_val
 
@@ -337,7 +338,7 @@ plt.legend(loc="best")
 plt.savefig(PLOT_DIR + "all.png")
 
 # Plot precision, recall and F1-score for each class
-plot_metrics(METRICS, X, PLOT_DIR, 0)
-plot_metrics(METRICS, X, PLOT_DIR, 1)
+# plot_metrics(METRICS, X, PLOT_DIR, 0)
+# plot_metrics(METRICS, X, PLOT_DIR, 1)
 
 print("FINISHED")
