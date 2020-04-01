@@ -20,12 +20,12 @@ pd.set_option('display.expand_frame_repr', False)
 
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 
-NAME = '2020-03-30_18-03_no_w150_h150_e25_da_CV'
+NAME = '2020-03-31_21-03_weights_w512_h512_e25_da_CV'
 RUN = 'r5'
 
 BATCH_SIZE = 16
-WIDTH = 150
-HEIGHT = 150
+WIDTH = 512
+HEIGHT = 512
 
 NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'

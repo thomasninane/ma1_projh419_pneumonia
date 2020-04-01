@@ -33,7 +33,7 @@ pd.set_option('display.expand_frame_repr', False)
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
-NAME = '2020-03-30_22-10_no_w150_h150_e5_da'
+NAME = '2020-04-01_13-01_weights_w150_h150_e25_da'
 RUN = 'r5'
 
 BATCH_SIZE = 16

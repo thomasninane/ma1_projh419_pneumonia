@@ -36,7 +36,7 @@ IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
 IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
 CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 
-EPOCHS = 5
+EPOCHS = 25
 BATCH_SIZE = 16
 
 WIDTH = 150

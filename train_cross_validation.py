@@ -39,8 +39,8 @@ CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
 EPOCHS = 25
 BATCH_SIZE = 16
 
-WIDTH = 150
-HEIGHT = 150
+WIDTH = 512
+HEIGHT = 512
 
 BALANCE_TYPE = 'weights'  # no, weights, over, under
 da = True
@@ -300,7 +300,7 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback],  # , reduce_lr, metrics_val
+                          callbacks=[tensorboard, cp_callback, reduce_lr],  # , reduce_lr, metrics_val
                           class_weight=class_weights
                           )
 
@@ -310,7 +310,7 @@ def train_model(img_shape, val_dict, train_dict):
                           epochs=EPOCHS,
                           validation_data=val_generator,
                           validation_steps=val_generator.samples // BATCH_SIZE,
-                          callbacks=[tensorboard, cp_callback]  # , reduce_lr, metrics_val
+                          callbacks=[tensorboard, cp_callback, reduce_lr]  # , reduce_lr, metrics_val
                           )
 
         hist_df = pd.DataFrame(H.history)
