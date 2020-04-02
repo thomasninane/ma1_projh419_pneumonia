@@ -2,24 +2,24 @@
 # IMPORTS
 ##############################################################################
 
-
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from collections import Counter
+
 
 ##############################################################################
 # PARAMETERS
 ##############################################################################
 
-
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
 
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
-
-DATAVIZ_DIR = '../../OneDrive/Temp/projh419_data/dataviz/'
+CSV_DIR = PROJH419_DIR+ 'csv\\'
+DATAVIZ_DIR = PROJH419_DIR + 'dataviz\\'
+IMG_DIR = PROJH419_DIR + 'flow_from_dir\\'
 
 
 ##############################################################################
@@ -27,7 +27,7 @@ DATAVIZ_DIR = '../../OneDrive/Temp/projh419_data/dataviz/'
 ##############################################################################
 
 def open_data_frames():
-    '''Opens and returns all 6 dataframes'''
+    """Opens and returns all 6 dataframes"""
     df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv').iloc[:, 1:]
     df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv').iloc[:, 1:]
 
@@ -57,6 +57,13 @@ def create_data_frame():
 
 
 def dataviz(df, name):
+    """
+    Creates a list which contains:
+    - the name of the data frame
+    - the number of samples in the data frame
+    - the max/min/mean/median width
+    - the max/min/mean/median height
+    """
     res = []
     res.append(name)
 
@@ -87,12 +94,15 @@ def dataviz(df, name):
 
 
 def add_row_to_df(df, to_append):
+    """Adds the to_append row to the data frame"""
     to_append_series = pd.Series(to_append, index=df.columns)
     df = df.append(to_append_series, ignore_index=True)
+
     return df
 
 
 def plot_histogram(x, y, title, xlabel, ylabel, width):
+    """Plots a histogram and saves it in DATAVIZ_DIR"""
     plt.figure()
     plt.bar(x, y, width)
     plt.title(title)
@@ -100,6 +110,7 @@ def plot_histogram(x, y, title, xlabel, ylabel, width):
     plt.ylabel(ylabel)
 
     plt.savefig(DATAVIZ_DIR + title + ".png")
+
     return 0
 
 
@@ -110,14 +121,16 @@ def xy_calculator(column):
     for x, y in data.items():
         xy.append([x, y])
     xy.sort()
+
     return xy
 
 
-def scatterplot(xy, title, xlabel, ylabel):
-    '''
+def scatter_plot(xy, title, xlabel, ylabel):
+    """
     xy: [[x0, y0], [x1, y1], ...]
     xy is already sorted
-    '''
+    Plots a scatter plot and saves it in DATAVIZ_DIR
+    """
     x = []
     y = []
     for row in xy:
@@ -131,10 +144,12 @@ def scatterplot(xy, title, xlabel, ylabel):
     plt.ylabel(ylabel)
 
     plt.savefig(DATAVIZ_DIR + title + ".png")
+
     return 0
 
 
 def virus_and_bacteria_counter(df):
+    """Counts how many images of the data frame are part of the normal/pneumonia class"""
     bacteria = 0
     virus = 0
     for element in df['normal/bacteria/virus']:
@@ -142,11 +157,12 @@ def virus_and_bacteria_counter(df):
             bacteria += 1
         else:
             virus += 1
+
     return bacteria, virus
 
 
 ##############################################################################
-#
+# Create one data frame which contains the image information (see dataviz function)
 ##############################################################################
 
 
@@ -154,6 +170,7 @@ df_test_n, df_test_p, df_train_n, df_train_p, df_val_n, df_val_p = open_data_fra
 df = pd.read_csv(CSV_DIR + 'combined.csv').iloc[:, 1:]
 
 summary = create_data_frame()
+
 row = dataviz(df, 'combined')
 summary = add_row_to_df(summary, row)
 
@@ -257,19 +274,19 @@ ylabel = "Number of observations"
 plot_histogram(categories, (obs_n, obs_b, obs_v), title, xlabel, ylabel, 0.8)
 
 ##############################################################################
-# Scatterplot of img_width (all images)
+# Scatter plot of img_width (all images)
 ##############################################################################
 
 xy_width = xy_calculator(df['width'])
 title = "Number of observations in fuction of the width"
 xlabel = "Width"
-scatterplot(xy_width, title, xlabel, ylabel)
+scatter_plot(xy_width, title, xlabel, ylabel)
 
 ##############################################################################
-# Scatterplot of img_height (all images)
+# Scatter plot of img_height (all images)
 ##############################################################################
 
 xy_height = xy_calculator(df['height'])
 title = "Number of observations in fuction of the height"
 xlabel = "Height"
-scatterplot(xy_height, title, xlabel, ylabel)
+scatter_plot(xy_height, title, xlabel, ylabel)

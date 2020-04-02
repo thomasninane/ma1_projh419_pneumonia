@@ -29,12 +29,12 @@ from metrics import *
 # PARAMETERS
 ##############################################################################
 
-
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
-IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
+
+IMG_DIR_DF = PROJH419_DIR + 'flow_from_df\\'
+CSV_DIR = PROJH419_DIR + 'csv\\'
 
 EPOCHS = 25
 BATCH_SIZE = 16
@@ -52,7 +52,7 @@ if da:
 else:
     NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
 
-NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+NAME_DIR = PROJH419_DIR + 'trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'
 LOG_DIR = NAME_DIR + 'logs\\'
 MODEL_DIR = NAME_DIR + 'models\\'
@@ -107,6 +107,7 @@ def input_shape():
 
 
 def balance_classes(df0, df1):
+    """Balances the classes if required (oversampling or undersampling) and then calls the merge_and_shuffle function"""
     print("Len of train_normal (unbalanced): ", df0.shape[0])
     print("Len of train_pneumonia (unbalanced): ", df1.shape[0])
 
@@ -132,7 +133,7 @@ def balance_classes(df0, df1):
 
 
 def merge_and_shuffle(df0, df1):
-    """merges two dataframes and shuffles the merged dataframe"""
+    """Merges two dataframes and shuffles the merged dataframe"""
     df = df0
     df = df.append(df1, ignore_index=True)
 
@@ -143,7 +144,7 @@ def merge_and_shuffle(df0, df1):
 
 
 def undersample(df0, df1):
-    """undersamples the data in the biggest class"""
+    """Undersamples the data in the biggest class"""
     minimum = min(df0.shape[0], df1.shape[0])
 
     df0_under = df0.sample(minimum)
@@ -153,7 +154,7 @@ def undersample(df0, df1):
 
 
 def oversample(df0, df1):
-    """oversamples the data in the smallest class (by duplicating items)"""
+    """Oversamples the data in the smallest class (by duplicating items)"""
     maximum = max(df0.shape[0], df1.shape[0])
 
     df0_over = df0.sample(maximum, replace=True)
@@ -169,6 +170,7 @@ def oversample(df0, df1):
 
 
 def train_model(img_shape, val_df, train_df):
+    """Trains the model and returns the history of the training (acc, val-acc, loss, val-loss)"""
     model = create_model(img_shape)
 
     '''Saving train df and val df'''
@@ -240,7 +242,7 @@ def train_model(img_shape, val_df, train_df):
 
 
 ##############################################################################
-# DATAFRAME
+# DATA FRAME
 ##############################################################################
 
 df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv')

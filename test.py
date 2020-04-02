@@ -2,27 +2,16 @@
 # IMPORTS
 ##############################################################################
 
-import gc
-import os
-import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
-import matplotlib
 import tensorflow as tf
 
-from datetime import datetime
-
-from tensorflow.keras import backend as kB
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-from sklearn.utils import class_weight
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix
 
 ##############################################################################
 # PARAMETERS
@@ -30,19 +19,21 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
+
+CSV_DIR = PROJH419_DIR + 'csv\\'
+IMG_DIR_DF = PROJH419_DIR + 'flow_from_df\\'
 
 NAME = '2020-04-01_13-01_weights_w150_h150_e25_da'
-RUN = 'r5'
-
-BATCH_SIZE = 16
 WIDTH = 150
 HEIGHT = 150
 
-NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+BATCH_SIZE = 16
+
+NAME_DIR = PROJH419_DIR + 'trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'
 MODEL_DIR = NAME_DIR + 'models\\'
+CHECKPOINT_PATH = MODEL_DIR + "cp.ckpt"
 
 
 ##############################################################################
@@ -86,10 +77,12 @@ def input_shape():
         res = (3, WIDTH, HEIGHT)
     else:
         res = (WIDTH, HEIGHT, 3)
+
     return res
 
 
 def predictions(ls):
+    """Uses a list of probabilities and converts it to either 0 or 1"""
     res_binary = []
     res_string = []
 
@@ -104,15 +97,6 @@ def predictions(ls):
     return res_binary, res_string
 
 
-def get_checkpoint_path(word):
-    if word in NAME:
-        res = MODEL_DIR + RUN + "\\cp.ckpt"
-    else:
-        res = MODEL_DIR + "cp.ckpt"
-    print('Checkpoint Path: ', res, "\n")
-    return res
-
-
 def merge_and_shuffle(df0, df1):
     """merges two dataframes and shuffles the merged dataframe"""
     df = df0
@@ -125,7 +109,7 @@ def merge_and_shuffle(df0, df1):
 
 
 ##############################################################################
-# DATAFRAME HANDLING
+# DATA FRAME
 ##############################################################################
 
 df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv')
@@ -147,7 +131,6 @@ print(df.head(), "\n")
 #
 ##############################################################################
 
-CHECKPOINT_PATH = get_checkpoint_path('CV')
 
 test_datagen = ImageDataGenerator(rescale=1. / 255)
 
@@ -166,7 +149,7 @@ model = create_model(input_shape)
 model.load_weights(CHECKPOINT_PATH)
 
 ##############################################################################
-#
+# PERFORMANCE ASSESSMENT
 ##############################################################################
 
 scores = model.evaluate(test_generator)

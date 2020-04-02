@@ -29,12 +29,12 @@ from metrics import *
 # PARAMETERS
 ##############################################################################
 
-
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
-IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
+
+IMG_DIR_DF = PROJH419_DIR + 'flow_from_df\\'
+CSV_DIR = PROJH419_DIR + 'csv\\'
 
 EPOCHS = 25
 BATCH_SIZE = 16
@@ -52,7 +52,7 @@ if da:
 else:
     NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS) + '_CV'
 
-NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+NAME_DIR = PROJH419_DIR + 'trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'
 LOG_DIR = NAME_DIR + 'logs\\'
 MODEL_DIR = NAME_DIR + 'models\\'
@@ -131,6 +131,7 @@ def balance_train_set(ls):
 
 
 def balance_classes(df0, df1, subset_number):
+    """Balances the classes if required (oversampling or undersampling) and then calls the merge_and_shuffle function"""
     print("\n", "SUBSET NUMBER:", subset_number)
 
     print("Len of train_normal (unbalanced): ", df0.shape[0])
@@ -158,7 +159,7 @@ def balance_classes(df0, df1, subset_number):
 
 
 def merge_and_shuffle(df0, df1):
-    """merges two dataframes and shuffles the merged dataframe"""
+    """Merges two dataframes and shuffles the merged dataframe"""
     df = df0
     df = df.append(df1, ignore_index=True)
 
@@ -169,7 +170,7 @@ def merge_and_shuffle(df0, df1):
 
 
 def undersample(df0, df1):
-    """undersamples the data in the biggest class"""
+    """Undersamples the data in the biggest class"""
     minimum = min(df0.shape[0], df1.shape[0])
 
     df0_under = df0.sample(minimum)
@@ -179,7 +180,7 @@ def undersample(df0, df1):
 
 
 def oversample(df0, df1):
-    """oversamples the data in the smallest class (by duplicating items)"""
+    """Oversamples the data in the smallest class (by duplicating items)"""
     maximum = max(df0.shape[0], df1.shape[0])
 
     df0_over = df0.sample(maximum, replace=True)
@@ -195,7 +196,7 @@ def oversample(df0, df1):
 
 
 def shuffle_and_divide(df):
-    """returns an array of k dataframes (they all have the same size)"""
+    """Returns an array of k dataframes (they all have the same size)"""
     df = df.sample(frac=1)
     df = df.reset_index(drop="True")
     res = np.array_split(df, K)
@@ -204,7 +205,7 @@ def shuffle_and_divide(df):
 
 
 def merge_pneumonia_and_normal_dataframes(ls_of_df_1, ls_of_df_2):
-    """merges the normal df and the pneumonia df into one subset of a dictionary (with class balancing and shuffling)"""
+    """Merges the normal df and the pneumonia df into one subset of a dictionary (with class balancing and shuffling)"""
     subsets = dict()
 
     for i in range(K):
@@ -214,7 +215,7 @@ def merge_pneumonia_and_normal_dataframes(ls_of_df_1, ls_of_df_2):
 
 
 def set_train_and_val_set(subsets):
-    """returns one dictionary with the validation sets and another dictionary with the k-1 combined training sets"""
+    """Returns one dictionary with the validation sets and another dictionary with the k-1 combined training sets"""
     val_dict = dict()
     train_dict = dict()
 
@@ -242,7 +243,7 @@ def set_train_and_val_set(subsets):
 
 
 def train_model(img_shape, val_dict, train_dict):
-    """trains the model for k folds and returns a dictionary containing the history of each model"""
+    """Trains the model for k folds and returns a dictionary containing the history of each model"""
 
     history = dict()
     metrics = dict()

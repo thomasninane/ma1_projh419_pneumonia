@@ -18,7 +18,10 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
+
+CSV_DIR = PROJH419_DIR + 'csv\\'
+IMG_DIR_DF = PROJH419_DIR + 'flow_from_df\\'
 
 NAME = '2020-03-31_21-03_weights_w512_h512_e25_da_CV'
 RUN = 'r5'
@@ -27,7 +30,7 @@ BATCH_SIZE = 16
 WIDTH = 512
 HEIGHT = 512
 
-NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+NAME_DIR = PROJH419_DIR + 'trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'
 MODEL_DIR = NAME_DIR + 'models\\'
 
@@ -73,6 +76,7 @@ def input_shape():
         res = (3, WIDTH, HEIGHT)
     else:
         res = (WIDTH, HEIGHT, 3)
+
     return res
 
 
@@ -92,6 +96,8 @@ def predictions(ls):
 
 
 def get_checkpoint_and_csv_path(word):
+    """Returns the path to the weights of the model and the path to the validation data frame (useful if the
+    validation is done on one CV model (takes run number into account) """
     if word in NAME:
         checkpoint_path = MODEL_DIR + RUN + "\\cp.ckpt"
         csv_path = DATA_DIR + RUN + '\\'
@@ -128,7 +134,7 @@ model = create_model(input_shape)
 model.load_weights(CHECKPOINT_PATH)
 
 ##############################################################################
-#
+# PERFORMANCE ASSESSMENT
 ##############################################################################
 
 scores = model.evaluate(val_generator)

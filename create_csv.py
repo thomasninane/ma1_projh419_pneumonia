@@ -2,31 +2,26 @@
 # IMPORTS
 ##############################################################################
 
-
+import cv2
 import os
-import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
-
-import cv2
 
 ##############################################################################
 # PARAMETERS
 ##############################################################################
 
-
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
 
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+CSV_DIR = PROJH419_DIR + 'csv\\'
+IMG_DIR = PROJH419_DIR + 'flow_from_dir\\'
 
 
 ##############################################################################
 # FUNCTIONS
 ##############################################################################
-
 
 def create_data_frame(directory):
     """
@@ -51,7 +46,7 @@ def add_set_type(df, dataset_type):
 
 
 def add_normal_or_pneumonia(df, normal_or_pneumonia):
-    """Adds wheather the patient is normal or suffers from pneumonia to the df"""
+    """Adds whether the patient is normal or suffers from pneumonia to the df"""
     res = []
     for i in range(df.shape[0]):
         res.append(normal_or_pneumonia)
@@ -62,7 +57,7 @@ def add_normal_or_pneumonia(df, normal_or_pneumonia):
 
 
 def add_img_dimensions(df, directory):
-    '''Adds the image dimensions to the df'''
+    """Adds the image dimensions to the df"""
     samples = df.shape[0]
     width = []
     height = []
@@ -83,7 +78,7 @@ def add_img_dimensions(df, directory):
 
 
 def add_normal_or_bacteria_or_virus(df):
-    '''Adds whether the patient is normal or suffers from bacterial/viral pneumonia to the df'''
+    """Adds whether the patient is normal or suffers from bacterial/viral pneumonia to the df"""
     res = []
 
     for name in df['filename']:
@@ -100,7 +95,7 @@ def add_normal_or_bacteria_or_virus(df):
 
 
 def create_csv(set_type, normal_or_pneumonia):
-    '''Creates a csv file'''
+    """Creates a data frame, adds data into it and then exports the data frame to a csv file"""
     directory = IMG_DIR + set_type + '/' + normal_or_pneumonia + '/'
     csv_name = set_type + '_' + normal_or_pneumonia
 
@@ -117,7 +112,7 @@ def create_csv(set_type, normal_or_pneumonia):
 
 
 def open_data_frames():
-    '''Opens and returns all 6 dataframes'''
+    """Opens and returns all 6 dataframes"""
     df_test_n = pd.read_csv(CSV_DIR + 'test_normal.csv').iloc[:, 1:]
     df_test_p = pd.read_csv(CSV_DIR + 'test_pneumonia.csv').iloc[:, 1:]
 
@@ -131,13 +126,15 @@ def open_data_frames():
 
 
 def combine_data_frames(df1, df2, df3, df4, df5, df6):
+    """Combines all 6 data frames into one single data frame"""
     df = pd.concat([df1, df2, df3, df4, df5, df6], ignore_index=True)
     export_csv = df.to_csv(CSV_DIR + 'combined.csv')
+
     return df
 
 
 ##############################################################################
-# TRAIN DF
+# CREATE TRAIN DATA FRAMES (NORMAL AND PNEUMONIA)
 ##############################################################################
 set_type = 'train'
 
@@ -148,7 +145,7 @@ normal_or_pneumonia = 'PNEUMONIA'
 create_csv(set_type, normal_or_pneumonia)
 
 ##############################################################################
-# TEST DF
+# CREATE TEST DATA FRAMES (NORMAL AND PNEUMONIA)
 ##############################################################################
 
 set_type = 'test'
@@ -160,7 +157,7 @@ normal_or_pneumonia = 'PNEUMONIA'
 create_csv(set_type, normal_or_pneumonia)
 
 ##############################################################################
-# VAL DF
+# CREATE VALIDATION DATA FRAMES (NORMAL AND PNEUMONIA)
 ##############################################################################
 
 set_type = 'val'

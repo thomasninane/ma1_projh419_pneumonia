@@ -1,8 +1,16 @@
+##############################################################################
+# IMPORTS
+##############################################################################
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from tensorflow.keras.callbacks import Callback
 from sklearn.metrics import classification_report
 
+
+##############################################################################
+# FUNCTIONS
+##############################################################################
 
 def predictions(ls):
     res = []
@@ -64,6 +72,10 @@ def plot_metrics_2(recall, precision, f1, x, plot_dir, class_number):
     return
 
 
+##############################################################################
+# CLASS
+##############################################################################
+
 class PrecisionRecallF1scoreMetrics(Callback):
     def __init__(self, generator, model):
         self.TARGET_NAMES = ['Normal', 'Pneumonia']
@@ -75,7 +87,7 @@ class PrecisionRecallF1scoreMetrics(Callback):
         y_pred = self.model.predict(self.generator)
         y_pred = predictions(y_pred)
         report = classification_report(self.generator.classes, y_pred,
-                                       output_dict=True)  # target_names=self.TARGET_NAMES,
+                                       output_dict=True)
         self.reports.append(report)
         return
 

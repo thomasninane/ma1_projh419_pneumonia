@@ -29,12 +29,12 @@ from metrics import *
 # PARAMETERS
 ##############################################################################
 
-
 pd.set_option('display.expand_frame_repr', False)
 
-IMG_DIR = '../../OneDrive/Temp/projh419_data/flow_from_dir/'
-IMG_DIR_DF = '../../OneDrive/Temp/projh419_data/flow_from_df/'
-CSV_DIR = '../../OneDrive/Temp/projh419_data/csv/'
+PROJH419_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\'
+
+IMG_DIR_DF = PROJH419_DIR + 'flow_from_df\\'
+CSV_DIR = PROJH419_DIR + 'csv\\'
 
 EPOCHS = 25
 BATCH_SIZE = 16
@@ -52,7 +52,7 @@ if da:
 else:
     NAME = date + '_' + BALANCE_TYPE + '_w' + str(WIDTH) + '_h' + str(HEIGHT) + '_e' + str(EPOCHS)
 
-NAME_DIR = '..\\..\\OneDrive\\Temp\\projh419_data\\trainings\\' + NAME + '\\'
+NAME_DIR = PROJH419_DIR + 'trainings\\' + NAME + '\\'
 DATA_DIR = NAME_DIR + 'data\\'
 LOG_DIR = NAME_DIR + 'logs\\'
 MODEL_DIR = NAME_DIR + 'models\\'
@@ -107,7 +107,7 @@ def input_shape():
 
 
 def merge_and_shuffle(df0, df1):
-    """merges two dataframes and shuffles the merged dataframe"""
+    """Merges two dataframes and shuffles the merged dataframe"""
     df = df0
     df = df.append(df1, ignore_index=True)
 
@@ -118,7 +118,7 @@ def merge_and_shuffle(df0, df1):
 
 
 ##############################################################################
-# DATAFRAME TRAIN
+# DATA FRAME TRAIN (using the whole train folder)
 ##############################################################################
 
 df_train_n = pd.read_csv(CSV_DIR + 'train_normal.csv')
@@ -134,7 +134,7 @@ print(df_train.head())
 print(df_train.shape[0])
 
 ##############################################################################
-# DATAFRAME VAL
+# DATA FRAME VAL (using the whole validation folder)
 ##############################################################################
 
 df_val_n = pd.read_csv(CSV_DIR + 'val_normal.csv')
